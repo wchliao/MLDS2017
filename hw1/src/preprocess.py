@@ -7,7 +7,7 @@ import numpy as np
 import csv
 import pickle
 
-dir = "../Holmes_Training_Data"
+dir = "../data/Holmes_Training_Data"
 list_path = [i for i in os.listdir(dir) if os.path.isfile(os.path.join(dir, i))]
 bookname = [os.path.splitext(i)[0] for i in list_path]
 
