@@ -2,12 +2,12 @@
 #   Usage:  1. "python DataPreprocessor.py inputpath" to preprocess all the files
 #               ex: "python DataPrerpocessor.py ../data/Holmes_Training_Data"
 #           
-#           2. read_dict(dict_file) to read dictionary file
+#           2. dictionary = read_dict(dict_file) to read dictionary file
 #           
-#           3. read_data(data_file) to read data file 
+#           3. data = read_data(data_file) to read data file 
 #
-#           4. ReadAll(dict_file, data_file) to read both dictionary and data
-#              file
+#           4. dictionary, data = ReadAll(dict_file, data_file) to read both 
+#              dictionary and data file
 #
 
 import os
