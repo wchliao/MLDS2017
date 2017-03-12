@@ -52,7 +52,7 @@ def str2int(datapath, dictionary):
             raw_text = f.read()
             for s in nltk.sent_tokenize(raw_text):
                 lower_s = [word.lower() for word in nltk.word_tokenize(s)]
-                i = np.array([dictionary[word] for word in lower_s])
+                i = np.array([int(dictionary[word]) for word in lower_s])
                 data.append(i)
 
     return np.array(data)
@@ -84,7 +84,7 @@ def read_dict(filename):
         with open(filename,'r') as f:
             for line in f:
                 s = line.split()
-                dictionary[s[1]] = s[0]
+                dictionary[s[1]] = int(s[0])
 
     return dictionary
 
@@ -126,5 +126,6 @@ if __name__ == "__main__":
     input_path = sys.argv[1]
     dict_file = 'dictionary.txt'
     data_file = 'data.npy'
+
     WriteAll(input_path, dict_file, data_file)
 
