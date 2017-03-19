@@ -122,10 +122,11 @@ def load_holmes_data(voc_size=10000):
 
 def filter_vocabulary(data, word_to_id, voc_size):
   vocabulary = voc_size
-  word_to_id = { k:v for k, v in word_to_id.items() if v < voc_size }
+  word_to_id = { k:v for k, v in word_to_id.items() if v < voc_size-1 }
+  UNK_ID = voc_size-1
+  word_to_id.update({'UNK': UNK_ID})
   def oov(w):
-    UNK_ID = voc_size
-    if w < voc_size: 
+    if w < voc_size-1: 
       return w
     else:
       return UNK_ID

@@ -315,10 +315,11 @@ def get_config():
 
 
 def main(_):
-  raw_data = reader.load_holmes_data(30000)
+  config = get_config()
+  vocab_size = config.vocab_size
+  raw_data = reader.load_holmes_data(vocab_size)
   train_data, _ , _ = raw_data
 
-  config = get_config()
   eval_config = get_config()
   eval_config.batch_size = 1
   eval_config.num_steps = 1
