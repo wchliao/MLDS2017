@@ -61,7 +61,7 @@ def _read_holmes(data_path=None):
     where each of the data objects can be passed to PTBIterator.
   """
 
-  dir = "../data/Holmes_Training_Data"
+  dir = "../Holmes_Training_Data"
   list_path = [i for i in os.listdir(dir) if os.path.isfile(os.path.join(dir, i))]
   bookname = [os.path.splitext(i)[0] for i in list_path]
 
@@ -82,7 +82,7 @@ def _read_holmes(data_path=None):
               documents += small
   return documents
 
-def holmes_raw_data(data_path=None):
+def holmes_raw_data(voc_size):
   """Load PTB raw data from data directory "data_path".
   Args:
     data_path: string path to the directory where simple-examples.tgz has
@@ -105,18 +105,32 @@ def save_holmes_data():
   
   d = (data, vocabulary)
   output = open('data.pkl', 'wb')
-  pickle.dump(d, output)
+  pickle.dump(d, output, protocol=2)
 
   output = open('word_to_id.pkl', 'wb')
-  pickle.dump(word_to_id, output)
+  pickle.dump(word_to_id, output, protocol=2)
 
-def load_holmes_data():
+def load_holmes_data(voc_size=10000):
   pickle_file = open('data.pkl', 'rb')
   data, vocabulary = pickle.load(pickle_file)
 
   pickle_file = open('word_to_id.pkl', 'rb')
   word_to_id = pickle.load(pickle_file)
+  data, vocabulary, word_to_id = filter_vocabulary(data, word_to_id, voc_size)
+
   return data, vocabulary, word_to_id  
+
+def filter_vocabulary(data, word_to_id, voc_size):
+  vocabulary = voc_size
+  word_to_id = { k:v for k, v in word_to_id.items() if v < voc_size }
+  def oov(w):
+    UNK_ID = voc_size
+    if w < voc_size: 
+      return w
+    else:
+      return UNK_ID
+  data = [oov(w) for w in data]
+  return data, vocabulary, word_to_id
 
 def ptb_raw_data(data_path=None):
   """Load PTB raw data from data directory "data_path".
@@ -196,4 +210,5 @@ def ptb_producer(raw_data, batch_size, num_steps, name=None):
 
 
 if __name__ == "__main__":
-  data, vocabulary, word_to_id  = load_holmes_data()
+  #save_holmes_data()
+  data, vocabulary, word_to_id  = load_holmes_data(20000)
