@@ -207,7 +207,7 @@ class SmallConfig(object):
   init_scale = 0.1
   learning_rate = 1.0
   max_grad_norm = 5
-  num_layers = 2
+  num_layers = 1
   num_steps = 20
   hidden_size = 200
   max_epoch = 4
@@ -215,7 +215,7 @@ class SmallConfig(object):
   keep_prob = 1.0
   lr_decay = 0.5
   batch_size = 20
-  vocab_size = 30000
+  vocab_size = 12001
 
 
 class MediumConfig(object):
@@ -315,11 +315,10 @@ def get_config():
 
 
 def main(_):
-  config = get_config()
-  vocab_size = config.vocab_size
-  raw_data = reader.load_holmes_data(vocab_size)
+  raw_data = reader.load_holmes_data(12000)
   train_data, _ , _ = raw_data
 
+  config = get_config()
   eval_config = get_config()
   eval_config.batch_size = 1
   eval_config.num_steps = 1
@@ -337,7 +336,7 @@ def main(_):
 
     sv = tf.train.Supervisor(logdir=FLAGS.save_path)
     session_config = tf.ConfigProto()
-    #session_config.gpu_options.per_process_gpu_memory_fraction = 0.05
+    session_config.gpu_options.per_process_gpu_memory_fraction = 0.05
     with sv.managed_session(config=session_config) as session:
       for i in range(config.max_max_epoch):
         lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
