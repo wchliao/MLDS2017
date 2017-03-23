@@ -10,7 +10,7 @@
 #           4. test, choices = read_test(test_file, choices_file) to read
 #           testing data and choices file
 #
-#           4. dictionary, train, test, choices 
+#           5. dictionary, train, test, choices 
 #               = ReadAll(dict_file, train_file, test_file, choices_file) 
 #                to read all the files
 #
@@ -39,6 +39,8 @@ def build_cnter(datapath):
                         pass
                 s = [word.lower() for word in s]
                 cnter.update(s)
+    if '_____' not in cnter:
+        cnter.update(['_____'])
 
     return cnter
 
@@ -144,7 +146,6 @@ def write_dict(cnter, filename):
     with open(filename,'w') as f:
         for i, wordpair in enumerate(cnter):
             f.write(str(i) + ' ' + wordpair[0] + ' ' + str(wordpair[1]) + '\n')
-        f.write(str(len(cnter)) + ' ' + '_____ 1\n' )
     
     return
 
@@ -239,6 +240,8 @@ def DeNoise(cnter, freq_threshold=None, num_threshold=None):
     new_cnter = cnter.most_common(cut_threshold-1)
     new_cnter = Counter(dict(new_cnter))
     new_cnter.update(['NotExist'])
+    if '_____' not in new_cnter:
+        new_cnter.update(['_____'])
 
     return new_cnter
 
@@ -278,7 +281,6 @@ if __name__ == "__main__":
     train_file = 'train.npy'
     test_file = 'test.npy'
     choices_file = 'choices.npy'
-
 
     WriteAll(TrainData_path, TestData, dict_file, train_file, test_file,
            choices_file)
