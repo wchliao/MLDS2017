@@ -28,6 +28,57 @@ from nltk import word_tokenize, sent_tokenize
 import numpy as np
 import pickle
 
+import csv
+
+BLANKET_SYMBOL = "_____"
+
+
+class Question(object):
+  def __init__(self, left, right, pos, options):
+    self.left = left
+    self.right = right
+    self.pos = pos
+    self.options = options
+
+def get_questions(word_to_id):
+  path = "../data/testing_data.csv"
+
+  def find_word_id(w):
+    if w.lower() in word_to_id:
+      _id = word_to_id[w.lower()]
+    else:
+      _id = word_to_id["UNK"]
+    return _id
+
+  def clear_question(raw_q):
+    q = word_tokenize(raw_q)
+    l = []
+    r = []
+    pos = -1
+    for i, w in enumerate(q):
+      if w == BLANKET_SYMBOL:
+        pos = i
+      if pos < 0:
+        l.append(find_word_id(w))
+      if pos < i and pos > 0:
+        r.append(find_word_id(w))
+    return l, r, pos
+
+  myQuestions = []
+
+  with open(path, 'r') as csvfile:
+    reader = csv.reader(csvfile, delimiter=',', quotechar='"')
+    next(reader, None)  # skip the headers
+
+    for row in reader:
+      qid = int(row[0])
+      q = row[1]
+      opts = row[2:]
+      opts = [find_word_id(w) for w in opts]
+      left, right, pos = clear_question(q)
+      myQuestions.append(Question(left, right, pos, opts))
+  return myQuestions
+
 def _read_words(filename):
   with tf.gfile.GFile(filename, "r") as f:
     return f.read().decode("utf-8").replace("\n", "<eos>").split()

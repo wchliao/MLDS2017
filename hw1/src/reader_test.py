@@ -4,7 +4,7 @@ from nltk import word_tokenize
 
 BLANKET_SYMBOL = "_____"
 
-def _raw_questions():
+def _raw_questions(word_to_id=None):
 	path = "../data/testing_data.csv"
 	with open(path, 'r') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',', quotechar='"')
@@ -14,8 +14,9 @@ def _raw_questions():
 			qid = int(row[0])
 			q = row[1]
 			opts = row[2:]
-			#print(q)
-			understand_question(q)
+			print(q)
+			
+			#understand_question(q)
 
 
 def understand_question(q):

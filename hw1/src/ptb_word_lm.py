@@ -93,6 +93,10 @@ class PTBInput(object):
     self.input_data, self.targets = reader.ptb_producer(
         data, batch_size, num_steps, name=name)
 
+class QuestionInput(object):
+  def __init__(self, questions):
+    self.batch_size = len(questions)
+    self.input_data = questions
 
 class PTBModel(object):
   """The PTB model."""
@@ -270,9 +274,9 @@ class TestConfig(object):
   max_grad_norm = 1
   num_layers = 1
   num_steps = 2
-  hidden_size = 2
+  hidden_size = 200
   max_epoch = 1
-  max_max_epoch = 1
+  max_max_epoch = 0
   keep_prob = 1.0
   lr_decay = 0.5
   batch_size = 20
@@ -327,43 +331,11 @@ def get_config():
     raise ValueError("Invalid model: %s", FLAGS.model)
 
 
-def predict(session, model):
-  """Runs the model on the given data."""
-  start_time = time.time()
-
-  state = session.run(model.initial_state)
-
-  fetches = {
-      "logits": model.logits
-  }
-  if eval_op is not None:
-    fetches["eval_op"] = eval_op
-
-  for step in range(model.input.epoch_size):
-    feed_dict = {}
-    for i, (c, h) in enumerate(model.initial_state):
-      feed_dict[c] = state[i].c
-      feed_dict[h] = state[i].h
-
-    vals = session.run(fetches, feed_dict)
-    cost = vals["cost"]
-    state = vals["final_state"]
-
-    costs += cost
-    iters += model.input.num_steps
-
-    if verbose and step % (model.input.epoch_size // 10) == 10:
-      print("%.3f perplexity: %.3f speed: %.0f wps" %
-            (step * 1.0 / model.input.epoch_size, np.exp(costs / iters),
-             iters * model.input.batch_size / (time.time() - start_time)))
-
-  return np.exp(costs / iters)
-
-
 def main(_):
   raw_data = reader.load_holmes_data(12000)
-  train_data, _ , _ = raw_data
-
+  train_data, _ , word_to_id = raw_data
+  test_questions = reader.get_questions(word_to_id)
+  
   config = get_config()
   eval_config = get_config()
   eval_config.batch_size = 1
@@ -380,6 +352,12 @@ def main(_):
       tf.summary.scalar("Training Loss", m.cost)
       tf.summary.scalar("Learning Rate", m.lr)
 
+    with tf.name_scope("Test"):
+      test_input = PTBInput(config=eval_config, data=train_data, name="TestInput")
+      with tf.variable_scope("Model", reuse=True, initializer=initializer):
+        mtest = PTBModel(is_training=False, config=eval_config,
+                         input_=test_input)
+
     sv = tf.train.Supervisor(logdir=FLAGS.save_path)
     session_config = tf.ConfigProto()
     session_config.gpu_options.per_process_gpu_memory_fraction = 0.05
@@ -391,6 +369,9 @@ def main(_):
         print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))
         train_perplexity = run_epoch(session, m, eval_op=m.train_op,
                                      verbose=True)
+
+      test_perplexity = run_epoch(session, mtest)
+      print("Test Perplexity: %.3f" % test_perplexity)
 
       if FLAGS.save_path:
         print("Saving model to %s." % FLAGS.save_path)
