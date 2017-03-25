@@ -36,7 +36,7 @@ for s in sentences:
 
 # load word embeddings
 ##############################################
-gloveFile = 'data/glove.6B.300d.txt'
+gloveFile = '../data/glove.6B.300d.txt'
 ##############################################
 vocab = {}
 print "Loading Glove Model"
