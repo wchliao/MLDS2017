@@ -161,6 +161,49 @@ def save_holmes_data():
   output = open('word_to_id.pkl', 'wb')
   pickle.dump(word_to_id, output, protocol=2)
 
+
+class BatchedData(object):
+  def __init__(self, data, batch_size, num_steps):
+    self._data = data
+    self._batches_completed = 0
+    self._index_in_epoch = 0
+    self.num_steps = num_steps
+    self.batch_size = batch_size
+    self._num_examples = len(data)
+    self.batch_len = self._num_examples // batch_size
+    self.epoch_size = (self.batch_len - 1) // num_steps
+
+  def next_batch(self):
+    batch = collections.namedtuple("Batch", ["data", "target"])
+    batch.data = []
+    batch.target = []
+    for i in range(self.batch_size):
+      start = self._index_in_epoch
+      self._index_in_epoch += self.batch_size
+      if self._index_in_epoch > self._num_examples:
+        # Finished epoch
+        self._batches_completed += 1
+        # Start next epoch
+        start = 0
+        self._index_in_epoch = self.num_steps
+        assert self.num_steps <= self._num_examples
+      end = self._index_in_epoch
+      batch.data.append(self._data[start:end])
+      batch.target.append(self._data[(start+1):(end+1)])
+    return batch
+
+def load_holmes_data_batches(voc_size, batch_size, num_steps):
+  pickle_file = open('data.pkl', 'rb')
+  data, vocabulary = pickle.load(pickle_file)
+
+  pickle_file = open('word_to_id.pkl', 'rb')
+  word_to_id = pickle.load(pickle_file)
+  data, vocabulary, word_to_id = filter_vocabulary(data, word_to_id, voc_size)
+
+  data = BatchedData(data, batch_size, num_steps)
+  return data, vocabulary, word_to_id  
+
+
 def load_holmes_data(voc_size=10000):
   pickle_file = open('data.pkl', 'rb')
   data, vocabulary = pickle.load(pickle_file)
