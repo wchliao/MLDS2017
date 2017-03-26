@@ -19,7 +19,7 @@ flags = tf.flags
 logging = tf.logging
 
 flags.DEFINE_string(
-    "model", "small",
+    "model", "test",
     "A type of model. Possible options are: small, medium, large.")
 flags.DEFINE_string("data_path", None,
                     "Where the training/test data is stored.")
@@ -27,6 +27,11 @@ flags.DEFINE_string("save_path", None,
                     "Model output directory.")
 flags.DEFINE_bool("use_fp16", False,
                   "Train using 16-bit floats instead of 32bit floats")
+flags.DEFINE_string("q_path", None,
+                  "Question Path")
+flags.DEFINE_string("p_path", None,
+                  "prediction Path")
+
 
 FLAGS = flags.FLAGS
 
@@ -179,14 +184,14 @@ class SmallConfig(object):
   init_scale = 0.1
   learning_rate = 1.0
   max_grad_norm = 5
-  num_layers = 1
-  num_steps = 20
+  num_layers = 2
+  num_steps = 30
   hidden_size = 200
   max_epoch = 2
   max_max_epoch = 13
   keep_prob = 1.0
   lr_decay = 0.5
-  batch_size = 20
+  batch_size = 30
   vocab_size = 12001
 
 
@@ -274,7 +279,7 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
 def predict(session, model, questions):
   """Runs the model on the given data."""
-  with open("prediction.csv", "w") as f:
+  with open(FLAGS.p_path, "w") as f:
     q_id = 1
     f.write("id,answer\n")
     for q in questions:
@@ -303,13 +308,14 @@ def predict(session, model, questions):
       vals = session.run(fetches, feed_dict)
      
       p_opt = []
+
       for o in q.options:
         p_opt.append(np.log(vals["logits"][q.pos-1, o]))
       f.write("{},{}\n".format(q_id, ["a", "b", "c", "d", "e"][np.argmax(p_opt)]))
       q_id += 1
 
-    #logits = session.run(model.logits)
-    #print(logits[0])
+      #logits = session.run(model.logits)
+      #print(logits[0])
 
   return None
 
@@ -330,7 +336,8 @@ def get_config():
 def main(_):
   raw_data = reader.load_holmes_data(12001)
   train_data, _ , word_to_id = raw_data
-  test_questions = reader.get_questions(word_to_id)
+  test_questions = reader.get_questions(word_to_id)#, FLAGS.q_path)
+
   
   config = get_config()
   eval_config = get_config()
@@ -354,7 +361,9 @@ def main(_):
         mtest = PTBModel(is_training=False, config=eval_config,
                          input_=test_questions)
 
+    saver = tf.train.Saver()
     sv = tf.train.Supervisor(logdir=FLAGS.save_path)
+    print(FLAGS.save_path)
     session_config = tf.ConfigProto()
     session_config.gpu_options.per_process_gpu_memory_fraction = 0.05
     with sv.managed_session(config=session_config) as session:
@@ -366,7 +375,8 @@ def main(_):
                                      verbose=True)
 
       test_perplexity = predict(session, mtest, test_questions)
-      print("prediction file written")
+      save_path = saver.save(session, "model.ckpt")
+      print("Model saved in file: %s" % save_path)
 
       #if FLAGS.save_path:
       #  print("Saving model to %s." % FLAGS.save_path)

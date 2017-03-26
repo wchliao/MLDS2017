@@ -28,6 +28,56 @@ from nltk import word_tokenize, sent_tokenize
 import numpy as np
 import pickle
 
+import csv
+
+BLANKET_SYMBOL = "_____"
+
+
+class Question(object):
+  def __init__(self, left, right, pos, options):
+    self.left = left
+    self.right = right
+    self.pos = pos
+    self.options = options
+
+def get_questions(word_to_id, path="../data/testing_data.csv" ):
+
+  def find_word_id(w):
+    if w.lower() in word_to_id:
+      _id = word_to_id[w.lower()]
+    else:
+      _id = word_to_id["UNK"]
+    return _id
+
+  def clear_question(raw_q):
+    q = word_tokenize(raw_q)
+    l = []
+    r = []
+    pos = -1
+    for i, w in enumerate(q):
+      if w == BLANKET_SYMBOL:
+        pos = i
+      if pos < 0:
+        l.append(find_word_id(w))
+      if pos < i and pos > 0:
+        r.append(find_word_id(w))
+    return l, r, pos
+
+  myQuestions = []
+
+  with open(path, 'r') as csvfile:
+    reader = csv.reader(csvfile, delimiter=',', quotechar='"')
+    next(reader, None)  # skip the headers
+
+    for row in reader:
+      qid = int(row[0])
+      q = row[1]
+      opts = row[2:]
+      opts = [find_word_id(w) for w in opts]
+      left, right, pos = clear_question(q)
+      myQuestions.append(Question(left, right, pos, opts))
+  return myQuestions
+
 def _read_words(filename):
   with tf.gfile.GFile(filename, "r") as f:
     return f.read().decode("utf-8").replace("\n", "<eos>").split()
@@ -109,6 +159,49 @@ def save_holmes_data():
 
   output = open('word_to_id.pkl', 'wb')
   pickle.dump(word_to_id, output, protocol=2)
+
+
+class BatchedData(object):
+  def __init__(self, data, batch_size, num_steps):
+    self._data = data
+    self._batches_completed = 0
+    self._index_in_epoch = 0
+    self.num_steps = num_steps
+    self.batch_size = batch_size
+    self._num_examples = len(data)
+    self.batch_len = self._num_examples // batch_size
+    self.epoch_size = (self.batch_len - 1) // num_steps
+
+  def next_batch(self):
+    batch = collections.namedtuple("Batch", ["data", "target"])
+    batch.data = []
+    batch.target = []
+    for i in range(self.batch_size):
+      start = self._index_in_epoch
+      self._index_in_epoch += self.batch_size
+      if self._index_in_epoch > self._num_examples:
+        # Finished epoch
+        self._batches_completed += 1
+        # Start next epoch
+        start = 0
+        self._index_in_epoch = self.num_steps
+        assert self.num_steps <= self._num_examples
+      end = self._index_in_epoch
+      batch.data.append(self._data[start:end])
+      batch.target.append(self._data[(start+1):(end+1)])
+    return batch
+
+def load_holmes_data_batches(voc_size, batch_size, num_steps):
+  pickle_file = open('data.pkl', 'rb')
+  data, vocabulary = pickle.load(pickle_file)
+
+  pickle_file = open('word_to_id.pkl', 'rb')
+  word_to_id = pickle.load(pickle_file)
+  data, vocabulary, word_to_id = filter_vocabulary(data, word_to_id, voc_size)
+
+  data = BatchedData(data, batch_size, num_steps)
+  return data, vocabulary, word_to_id  
+
 
 def load_holmes_data(voc_size=10000):
   pickle_file = open('data.pkl', 'rb')
