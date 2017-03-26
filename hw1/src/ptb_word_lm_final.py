@@ -336,8 +336,7 @@ def get_config():
 def main(_):
   raw_data = reader.load_holmes_data(12001)
   train_data, _ , word_to_id = raw_data
-  test_questions = reader.get_questions(word_to_id)#, FLAGS.q_path)
-
+  test_questions = reader.get_questions(word_to_id, FLAGS.q_path)
   
   config = get_config()
   eval_config = get_config()

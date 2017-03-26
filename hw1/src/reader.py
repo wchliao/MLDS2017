@@ -40,8 +40,7 @@ class Question(object):
     self.pos = pos
     self.options = options
 
-def get_questions(word_to_id):
-  path = "../data/testing_data.csv"
+def get_questions(word_to_id, path="../data/testing_data.csv" ):
 
   def find_word_id(w):
     if w.lower() in word_to_id:
