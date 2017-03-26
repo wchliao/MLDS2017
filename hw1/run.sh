@@ -6,4 +6,10 @@ fi
 
 wget https://dl.dropboxusercontent.com/u/16850414/model.tar.gz
 tar xzvf model.tar.gz
-python ptb_word_lm_final.py --q_path=$1 --save_path=./model_old --p_path=$2
+
+Q=$(pwd)/$1
+P=$(pwd)/$2
+M=$(pwd)/model_old
+
+cd src
+python ptb_word_lm_final.py --q_path=$Q --save_path=$M --p_path=$P
