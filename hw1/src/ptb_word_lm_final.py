@@ -362,6 +362,7 @@ def main(_):
                          input_=test_questions)
 
     sv = tf.train.Supervisor(logdir=FLAGS.save_path)
+    print(FLAGS.save_path)
     session_config = tf.ConfigProto()
     session_config.gpu_options.per_process_gpu_memory_fraction = 0.05
     with sv.managed_session(config=session_config) as session:
