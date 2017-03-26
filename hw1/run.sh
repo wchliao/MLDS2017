@@ -7,8 +7,8 @@ fi
 wget https://dl.dropboxusercontent.com/u/16850414/model.tar.gz
 tar xzvf model.tar.gz
 
-Q=$(pwd)/$1
-P=$(pwd)/$2
+Q=$1
+P=$2
 M=$(pwd)/model_old
 
 cd src
