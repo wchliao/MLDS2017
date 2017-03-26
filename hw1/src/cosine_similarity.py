@@ -3,9 +3,11 @@ import csv
 import re
 from scipy import spatial
 import operator
+import sys
 
 # load input data
-testFile = '../data/testing_data.csv'
+# testFile = '../data/testing_data.csv'
+testFile = sys.argv[1]
 sentences = []
 choices = []
 print "Loading Test Data"
@@ -73,7 +75,8 @@ for i in range(len(sentences)):
     pred.append(m_index)
 
 # output prediction
-predFile = 'pred.csv'
+# predFile = 'pred.csv'
+predFile = sys.argv[2]
 ch = ['a','b','c','d','e']
 with open(predFile,'w') as fout:
     fout.write('id,answer')
