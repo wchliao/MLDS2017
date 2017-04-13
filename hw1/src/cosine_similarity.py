@@ -10,7 +10,7 @@ import sys
 testFile = sys.argv[1]
 sentences = []
 choices = []
-print "Loading Test Data"
+print("Loading Test Data")
 with open(testFile,'r') as fin:
     reader = csv.reader(fin,delimiter=',')
     for row in reader:
@@ -24,7 +24,7 @@ with open(testFile,'r') as fin:
         choices.append(t)
 del sentences[0]
 del choices[0]
-print "Done.",len(sentences)," data loaded"
+print("Done.",len(sentences)," data loaded")
 
 def getWords(text):
     a = re.compile('\w+').findall(text)
@@ -38,17 +38,17 @@ for s in sentences:
 
 # load word embeddings
 ##############################################
-gloveFile = '../data/glove.6B.300d.txt'
+gloveFile = 'data/glove.6B.300d.txt'
 ##############################################
 vocab = {}
-print "Loading Glove Model"
+print("Loading Glove Model")
 with open(gloveFile,'r') as fin:
     for line in fin:
         splitLine = line.split()
         word = splitLine[0]
         embedding = [float(val) for val in splitLine[1:]]
         vocab[word] = embedding
-print "Done.",len(vocab)," words loaded"
+print("Done.",len(vocab)," words loaded")
 
 # make prediction
 pred = []
