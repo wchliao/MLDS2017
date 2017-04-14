@@ -188,7 +188,7 @@ class SmallConfig(object):
   num_steps = 30
   hidden_size = 200
   max_epoch = 2
-  max_max_epoch = 13
+  max_max_epoch = 1
   keep_prob = 1.0
   lr_decay = 0.5
   batch_size = 30
@@ -361,13 +361,12 @@ def main(_):
         mtest = PTBModel(is_training=False, config=eval_config,
                          input_=test_questions)
 
-    all_trainable = tf.trainable_variables()
-    saver = tf.train.Saver(all_trainable)
-    sv = tf.train.Supervisor(logdir=FLAGS.save_path)
-    print(FLAGS.save_path)
+    saver = tf.train.Saver()
+    #sv = tf.train.Supervisor(logdir=FLAGS.save_path)
+    #print(FLAGS.save_path)
     session_config = tf.ConfigProto()
     session_config.gpu_options.per_process_gpu_memory_fraction = 0.05
-    with sv.managed_session(config=session_config) as session:
+    with tf.Session(config=session_config) as session:
       for i in range(config.max_max_epoch):
         lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
         m.assign_lr(session, config.learning_rate * lr_decay)
@@ -376,7 +375,7 @@ def main(_):
                                      verbose=True)
 
       test_perplexity = predict(session, mtest, test_questions)
-      save_path = saver.save(session, "model.ckpt")
+      save_path = saver.save(session, "train/model.ckpt")
       print("Model saved in file: %s" % save_path)
 
       #if FLAGS.save_path:
