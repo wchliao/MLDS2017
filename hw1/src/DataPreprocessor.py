@@ -251,11 +251,11 @@ def WriteAll(TrainData_path, TestData, dict_file, train_file, test_file, choices
     dictionary, cnter = build_dict(TrainData_path)
     cnter = DeNoise(cnter, None, 12000)
     write_dict(cnter, dict_file)
+    dictionary, _ = build_dict(None, cnter)
     
     train = str2int_train(TrainData_path, dictionary)
     write_train_npy(train, train_file)
     
-    dictionary, _ = build_dict(None, cnter)
     test, choices = str2int_test(TestData, dictionary)
     write_test_npy(test, choices, test_file, choices_file)
     
