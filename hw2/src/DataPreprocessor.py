@@ -37,6 +37,10 @@ def build_cnter(datafile):
             words = sent.split()
             cnter.update(words)
 
+    cnter.update(['<pad>'])
+    cnter.update(['<BOS>'])
+    cnter.update(['<EOS>'])
+
     return cnter
 
 
@@ -51,7 +55,7 @@ def build_dict(datafile=None, cnter=None):
     return dictionary, cnter
 
 
-def str2int(datafile, dictionary, NotExist='NotExist'):
+def str2int(datafile, dictionary):
 
     with open(datafile, 'r') as f:
         data = json.load(f)
@@ -73,7 +77,7 @@ def str2int(datafile, dictionary, NotExist='NotExist'):
                 if word in dictionary:
                     translated_words.append(dictionary[word])
                 else:
-                    translated_words.append(dictionary[NotExist])
+                    translated_words.append(dictionary['<NotExist>'])
 
             translated_captions['caption'].append(translated_words)
         
@@ -155,7 +159,14 @@ def DeNoise(cnter, freq_threshold=None, num_threshold=None):
 
     new_cnter = cnter.most_common(cut_threshold-1)
     new_cnter = Counter(dict(new_cnter))
-    new_cnter.update(['NotExist'])
+    new_cnter.update(['<NotExist>'])
+
+    if '<pad>' not in new_cnter:
+        new_cnter.update(['<pad>'])
+    if '<BOS>' not in new_cnter:
+        new_cnter.update(['<BOS>'])
+    if '<EOS>' not in new_cnter:
+        new_cnter.update(['<EOS>'])
 
     return new_cnter
 
