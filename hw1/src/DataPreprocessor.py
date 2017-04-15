@@ -50,10 +50,8 @@ def build_dict(datapath, cnter=None):
         cnter = build_cnter(datapath)
 
     dictionary = {}
-    idx = 0
-    for word in list(cnter):
-        dictionary[word] = idx
-        idx += 1
+    for idx, wordpair in enumerate(cnter.most_common()):
+        dictionary[wordpair[0]] = idx
 
     return dictionary, cnter
 
