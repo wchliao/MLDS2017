@@ -13,6 +13,7 @@ the usage of GPU memory:
 import argparse
 import json
 import time
+import csv
 import numpy as np
 import tensorflow as tf
 import DataPreprocessor as DP
@@ -29,13 +30,22 @@ model_file = './model/model.ckpt'
 ##############################
 
 
+##### Constants #####
+
+BOS_tag = '<BOS>'
+EOS_tag = '<EOS>'
+
+#####################
+
+
 ##### Parameters #####
 
-batch_size = 1
-display_step = 10000
+batch_size = 100
+display_step = 10
 N_hidden = 256
-N_epoch = 1
+N_epoch = 10
 learning_rate = 0.001
+maxseqlen = 40
 
 ######################
 
@@ -67,8 +77,10 @@ class s2vtModel():
             tf.random_uniform([vocab_size, N_hidden], -0.1, 0.1), 
             name = 'word_embeddings')
 
-        self.LSTM1 = tf.contrib.rnn.BasicLSTMCell(N_hidden)
-        self.LSTM2 = tf.contrib.rnn.BasicLSTMCell(N_hidden)
+        self.LSTM1 = tf.contrib.rnn.BasicLSTMCell(N_hidden,
+                state_is_tuple=False)
+        self.LSTM2 = tf.contrib.rnn.BasicLSTMCell(N_hidden,
+                state_is_tuple=False)
 
         self.image_w = tf.Variable(
             tf.random_uniform([dim, N_hidden], -0.1, 0.1),
@@ -79,13 +91,13 @@ class s2vtModel():
         self.word_w = tf.Variable(
             tf.random_uniform([N_hidden, vocab_size], -0.1, 0.1),
             name = 'word_w')
-        self.word_b = tf.Variable(tf.zeros([N_hidden]),
+        self.word_b = tf.Variable(tf.zeros([vocab_size]),
             name = 'word_b')
 
         return
 
 
-    def build_train_model(self):
+    def build_train_model(self, BOS_ID):
         # Inputs
         video = tf.placeholder(dtype=tf.float32, 
                 shape=[self.batch_size, self.N_video_step, self.dim])
@@ -110,25 +122,32 @@ class s2vtModel():
 
         # Encoding stage: Read frames
         for i in range(self.N_video_step):
-            tf.get_variable_scope().reuse_variables()
-
-            with tf.variable_scope('LSTM1'):
-                output1, state1 = self.LSTM1(image_embed, state1)
-            with tf.variable_scope('LSTM2'):
-                output2, state2 = self.LSTM2(tf.concat([padding, output1], 1), state2)
+            with tf.variable_scope('LSTM_scope') as scope:
+                if i > 0:
+                    scope.reuse_variables()
+                
+                with tf.variable_scope('LSTM1'):
+                    output1, state1 = self.LSTM1(image_embed[:,i,:], state1)
+                with tf.variable_scope('LSTM2'):
+                    output2, state2 = self.LSTM2(tf.concat([padding, output1], 1), state2)
 
         # Decoding stage: Generate captions
         for i in range(self.N_caption_step):
-            cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
-                    caption[:,i])
+            if i == 0:
+                cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
+                        np.full(self.batch_size, BOS_ID, dtype=np.int32))
+            else:
+                cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
+                        caption[:,i-1])
 
-            tf.get_variable_scope().reuse_variables()
-            with tf.variable_scope('LSTM1'):
-                output1, state1 = self.LSTM1(padding, state1)
-            with tf.variable_scope('LSTM2'):
-                output2, state2 = self.LSTM2(tf.concat([cur_embed, output1], 1), state2)
+            with tf.variable_scope('LSTM_scope') as scope:
+                scope.reuse_variables()
+                with tf.variable_scope('LSTM1'):
+                    output1, state1 = self.LSTM1(padding, state1)
+                with tf.variable_scope('LSTM2'):
+                    output2, state2 = self.LSTM2(tf.concat([cur_embed, output1], 1), state2)
 
-            logits = output2 * self.word_w + self.word_b
+            logits = tf.nn.xw_plus_b(output2, self.word_w, self.word_b)
             cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
                                                     logits=logits,
                                                     labels=caption[:,i])
@@ -141,23 +160,71 @@ class s2vtModel():
 
         loss = loss / tf.reduce_sum(caption_mask)
 
-        return loss, video, video_mask, caption, caption_mask, probs
+        return loss, video, caption, caption_mask, probs
 
 
-    def build_test_model():
-        return
+    def build_test_model(self, BOS_ID):
+        # Inputs
+        video = tf.placeholder(dtype=tf.float32, 
+                shape=[1, self.N_video_step, self.dim])
+        video_flat = tf.reshape(video, [-1, self.dim])
+        image_embed = tf.nn.xw_plus_b(video_flat, self.image_w, self.image_b)
+        image_embed = tf.reshape(image_embed, [1, self.N_video_step, self.N_hidden])
+
+        # RNN parameters
+        state1 = tf.zeros([1, self.LSTM1.state_size])
+        state2 = tf.zeros([1, self.LSTM2.state_size])
+        padding = tf.zeros([1, self.N_hidden])
+
+        probs = []
+        caption = []
+
+        # Encoding stage: Read frames
+        for i in range(self.N_video_step):
+            with tf.variable_scope('LSTM_scope') as scope:
+                if i > 0:
+                    scope.reuse_variables()
+                
+                with tf.variable_scope('LSTM1'):
+                    output1, state1 = self.LSTM1(image_embed[:,i,:], state1)
+                with tf.variable_scope('LSTM2'):
+                    output2, state2 = self.LSTM2(tf.concat([padding, output1], 1), state2)
+
+        # Decoding stage: Generate captions
+        for i in range(self.N_caption_step):
+            if i == 0:
+                cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
+                        [BOS_ID])
+
+            with tf.variable_scope('LSTM_scope') as scope:
+                scope.reuse_variables()
+                with tf.variable_scope('LSTM1'):
+                    output1, state1 = self.LSTM1(padding, state1)
+                with tf.variable_scope('LSTM2'):
+                    output2, state2 = self.LSTM2(tf.concat([cur_embed, output1], 1), state2)
+
+            logits = tf.nn.xw_plus_b(output2, self.word_w, self.word_b)
+            probs.append(logits)
+            best_choice = tf.argmax(logits, 1)[0]
+            caption.append(best_choice)
+
+            cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
+                    best_choice)
+            cur_embed = tf.expand_dims(cur_embed, 0)
+
+        return video, caption, probs
 
 
 def run_train():
     # Inputs
     dictionary = DP.read_dict(dict_file)
     train_label = DP.read_train(train_label_file)
-    train = DataSet(train_path, train_label, len(dictionary), 
-            dictionary['<BOS>'], dictionary['<EOS>'])
+    train = DataSet(train_path, train_label, len(dictionary), dictionary[EOS_tag])
 
     # Parameters
     N_input = train.datalen
-    N_iter = N_input * N_epoch
+    N_iter = N_input * N_epoch // batch_size
+    print('Total training steps: %d' % N_iter)
 
     # Model
     model = s2vtModel(
@@ -169,42 +236,42 @@ def run_train():
             batch_size = batch_size)
 
     # Loss function and optimizer
-    tf_loss, tf_video, tf_video_mask, tf_caption, tf_caption_mask, tf_probs = model.build_train_model()
-    
+    tf_loss, tf_video, tf_caption, tf_caption_mask, _ = model.build_train_model(dictionary[BOS_tag])
     tf_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(tf_loss)
 
     init = tf.global_variables_initializer()
 
 #    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     with tf.Session() as sess:
+        sess.run(init)
         step = 0
 
         t = time.time()
         while step < N_iter:
-            x, raw_y = train.next_batch(batch_size=batch_size)
-            y = np.array([batch_size, train.maxseqlen])
-            y.fill('<EOS>')
+            batch_x, batch_y = train.next_batch(batch_size=batch_size)
+            y = np.full((batch_size, train.maxseqlen), dictionary[EOS_tag])
             y_mask = np.zeros(y.shape)
-            for i, caption in enumerate(raw_y):
-                y[i,:len(caption)] = raw_y
+
+            for i, caption in enumerate(batch_y):
+                y[i,:len(caption)] = caption
                 y_mask[i, :len(caption)] = 1
 
             sess.run(tf_optimizer, feed_dict={
-                video: x,
-                caption: y, 
-                caption_mask: y_mask
+                tf_video: batch_x,
+                tf_caption: y, 
+                tf_caption_mask: y_mask
                 })
 
-            if True:
-#            if step % display_step == 0:
+#            if True:
+            if step % display_step == 0:
                 used_time = time.time() - t
                 t = time.time()
                 loss = sess.run(tf_loss, feed_dict={
-                    video: x,
-                    caption: y,
-                    caption_mask: y_mask
+                    tf_video: batch_x,
+                    tf_caption: y,
+                    tf_caption_mask: y_mask
                     })
-                print(str(step) + 'step: loss = ', str(loss) + 
+                print(str(step) + ' step: loss = ', str(loss) + 
                         ' time = ' + str(used_time) + 'secs')
 
             step += 1
@@ -215,11 +282,85 @@ def run_train():
     return
 
 
-def run_test():
+def run_test(testing_id_file, feature_path):
+    # Inputs
+    dictionary = DP.read_dict(dict_file)
+    inv_dictionary = list(dictionary)
+
+    ID = []
+    with open(testing_id_file, 'r') as f:
+        reader = csv.reader(f)
+        for line in reader:
+            ID.append(line[0])
+
+    if feature_path[-1] is not '/':
+        feature_path += '/'
+
+    feat = []
+    for filename in ID:
+        x = np.load(feature_path + filename + '.npy')
+        feat.append(x)
+    feat = np.array(feat)
+
+    # Parameters
+    N_input = len(ID)
+    feat_timestep = feat.shape[1]
+    feat_dim = feat.shape[-1]
+    vocab_size = len(dictionary)
+
+    print('Total testing steps: %d' % N_input)
+
+    # Model
+    model = s2vtModel(
+            dim = feat_dim,
+            vocab_size = vocab_size,
+            N_hidden = N_hidden,
+            N_video_step = feat_timestep,
+            N_caption_step = maxseqlen,
+            batch_size = batch_size)
+
+    tf_video, tf_caption, _ = model.build_test_model(dictionary[BOS_tag])
+
+    init = tf.global_variables_initializer()
+
+    result = []
+
+#    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+    with tf.Session() as sess:
+        sess.run(init)
+        saver = tf.train.Saver()
+        saver.restore(sess, model_file)
+        step = 0
+
+        t = time.time()
+        for i, x in enumerate(feat):
+            caption = {}
+            caption['caption'] = ''
+            caption['id'] = ID[i]
+            pred = sess.run(tf_caption, feed_dict={tf_video: [x]})
+
+            for j, word in enumerate(pred):
+                if inv_dictionary[word] == EOS_tag:
+                    break
+                else:
+                    if j > 0:
+                        caption['caption'] += ' '
+                    caption['caption'] += inv_dictionary[word]
+
+            result.append(caption)
+
+    return result
+
+
+def WriteResult(data):
+    with open('result.json','w') as f:
+        json.dump(data, f, sort_keys=True, indent=4)
     return
 
 
 if __name__ == '__main__':
     args = parse_args()
     run_train()
+#    result = run_test(args.testing_id_file, args.feature_path)
+#    WriteResult(result)
 
