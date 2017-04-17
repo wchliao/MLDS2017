@@ -11,6 +11,7 @@ the usage of GPU memory:
 """
 
 import argparse
+import os
 import json
 import time
 import csv
@@ -41,11 +42,11 @@ EOS_tag = '<EOS>'
 ##### Parameters #####
 
 batch_size = 100
-display_step = 10
+display_step = 100
 N_hidden = 256
 N_epoch = 10
 learning_rate = 0.001
-maxseqlen = 40
+maxseqlen = 20
 
 ######################
 
@@ -59,8 +60,13 @@ maxseqlen = 40
 
 def parse_args():
     parser = argparse.ArgumentParser()
+
     parser.add_argument('testing_id_file', help='Should give testing id file')
     parser.add_argument('feature_path', help='Should give feature path here')
+    
+    parser.add_argument('--train', action='store_true', help='Run training')
+    parser.add_argument('--test', action='store_true', help='Run testing')
+
     return parser.parse_args()
 
 
@@ -215,6 +221,21 @@ class s2vtModel():
         return video, caption, probs
 
 
+    def save_model(self, sess, model_file):
+        if not os.path.isdir(os.path.dirname(model_file)):
+            os.mkdir('model')
+        saver = tf.train.Saver()
+        saver.save(sess, model_file)
+        return
+
+
+    def restore_model(self, sess, model_file):
+        if os.path.isdir(os.path.dirname(model_file)):
+            saver = tf.train.Saver()
+            saver.restore(sess, model_file)
+        return
+
+
 def run_train():
     # Inputs
     dictionary = DP.read_dict(dict_file)
@@ -244,10 +265,11 @@ def run_train():
 #    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     with tf.Session() as sess:
         sess.run(init)
+        model.restore_model(sess, model_file)
         step = 0
 
         t = time.time()
-        while step < N_iter:
+        while step < 3:
             batch_x, batch_y = train.next_batch(batch_size=batch_size)
             y = np.full((batch_size, train.maxseqlen), dictionary[EOS_tag])
             y_mask = np.zeros(y.shape)
@@ -262,8 +284,8 @@ def run_train():
                 tf_caption_mask: y_mask
                 })
 
-#            if True:
-            if step % display_step == 0:
+            if True:
+#            if step % display_step == 0:
                 used_time = time.time() - t
                 t = time.time()
                 loss = sess.run(tf_loss, feed_dict={
@@ -272,12 +294,10 @@ def run_train():
                     tf_caption_mask: y_mask
                     })
                 print(str(step) + ' step: loss = ', str(loss) + 
-                        ' time = ' + str(used_time) + 'secs')
+                        ' time = ' + str(used_time) + ' secs')
+                model.save_model(sess, model_file)
 
             step += 1
-
-        saver = tf.train.Saver()
-        saver.save(sess, model_file)
 
     return
 
@@ -328,8 +348,7 @@ def run_test(testing_id_file, feature_path):
 #    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     with tf.Session() as sess:
         sess.run(init)
-        saver = tf.train.Saver()
-        saver.restore(sess, model_file)
+        model.restore_model(sess, model_file)
         step = 0
 
         t = time.time()
@@ -360,7 +379,11 @@ def WriteResult(data):
 
 if __name__ == '__main__':
     args = parse_args()
-    run_train()
-#    result = run_test(args.testing_id_file, args.feature_path)
-#    WriteResult(result)
+    if args.train:
+        print('Run training.')
+        run_train()
+    elif args.test:
+        print('Run testing.')
+        result = run_test(args.testing_id_file, args.feature_path)
+        WriteResult(result)
 
