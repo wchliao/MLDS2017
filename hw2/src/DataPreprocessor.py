@@ -76,7 +76,7 @@ def str2int(datafile, dictionary):
                 if word in dictionary:
                     translated_words.append(dictionary[word])
                 else:
-                    translated_words.append(dictionary['<NotExist>'])
+                    translated_words.append(dictionary['<UNK>'])
 
             translated_captions['caption'].append(translated_words)
         
@@ -158,7 +158,7 @@ def DeNoise(cnter, freq_threshold=None, num_threshold=None):
 
     new_cnter = cnter.most_common(cut_threshold-1)
     new_cnter = Counter(dict(new_cnter))
-    new_cnter.update(['<NotExist>'])
+    new_cnter.update(['<UNK>'])
 
     if '<BOS>' not in new_cnter:
         new_cnter.update(['<BOS>'])
