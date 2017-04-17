@@ -156,7 +156,7 @@ def DeNoise(cnter, freq_threshold=None, num_threshold=None):
     else:
         return cnter, data
 
-    new_cnter = cnter.most_common(cut_threshold-1)
+    new_cnter = cnter.most_common(cut_threshold)
     new_cnter = Counter(dict(new_cnter))
     new_cnter.update(['<UNK>'])
 
@@ -171,7 +171,7 @@ def DeNoise(cnter, freq_threshold=None, num_threshold=None):
 def WriteAll(TrainData_path, dict_file, train_file):
 
     dictionary, cnter = build_dict(datafile=TrainData_path)
-    cnter = DeNoise(cnter, num_threshold=3000)
+    cnter = DeNoise(cnter, freq_threshold=3)
     write_dict(cnter, dict_file)
 
     dictionary, _ = build_dict(cnter=cnter)
