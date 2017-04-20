@@ -33,6 +33,7 @@ model_file = './model/model.ckpt'
 
 ##### Constants #####
 
+UNK_tag = '<UNK>'
 BOS_tag = '<BOS>'
 EOS_tag = '<EOS>'
 
@@ -364,7 +365,11 @@ def run_test(testing_id_file, feature_path):
                 else:
                     if j > 0:
                         caption['caption'] += ' '
-                    caption['caption'] += inv_dictionary[word]
+                    
+                    if inv_dictionary[word] == UNK_tag:
+                        caption['caption'] += 'something'
+                    else:
+                        caption['caption'] += inv_dictionary[word]
 
             result.append(caption)
 
