@@ -104,7 +104,7 @@ class s2vtModel():
         return
 
 
-    def build_train_model(self, BOS_ID):
+    def build_train_model(self, dictionary):
         # Inputs
         video = tf.placeholder(dtype=tf.float32, 
                 shape=[self.batch_size, self.N_video_step, self.dim])
@@ -142,7 +142,7 @@ class s2vtModel():
         for i in range(self.N_caption_step):
             if i == 0:
                 cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
-                        np.full(self.batch_size, BOS_ID, dtype=np.int32))
+                        np.full(self.batch_size, dictionary[BOS_tag], dtype=np.int32))
             else:
                 cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
                         caption[:,i-1])
@@ -170,7 +170,7 @@ class s2vtModel():
         return loss, video, caption, caption_mask, probs
 
 
-    def build_test_model(self, BOS_ID):
+    def build_test_model(self, dictionary):
         # Inputs
         video = tf.placeholder(dtype=tf.float32, 
                 shape=[1, self.N_video_step, self.dim])
@@ -183,6 +183,8 @@ class s2vtModel():
         state2 = tf.zeros([1, self.LSTM2.state_size])
         padding = tf.zeros([1, self.N_hidden])
 
+        valid_idx = np.append(range(self.vocab_size-3), dictionary[EOS_tag])
+        valid_idx = tf.constant(valid_idx)
         probs = []
         caption = []
 
@@ -201,7 +203,7 @@ class s2vtModel():
         for i in range(self.N_caption_step):
             if i == 0:
                 cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
-                        [BOS_ID])
+                        [dictionary[BOS_tag]])
 
             with tf.variable_scope('LSTM_scope') as scope:
                 scope.reuse_variables()
@@ -211,8 +213,9 @@ class s2vtModel():
                     output2, state2 = self.LSTM2(tf.concat([cur_embed, output1], 1), state2)
 
             logits = tf.nn.xw_plus_b(output2, self.word_w, self.word_b)
+            logits = tf.reshape(logits, [-1])
             probs.append(logits)
-            best_choice = tf.argmax(logits, 1)[0]
+            best_choice = tf.argmax(tf.gather(logits, valid_idx), axis=0)
             caption.append(best_choice)
 
             cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
@@ -258,7 +261,7 @@ def run_train():
             batch_size = batch_size)
 
     # Loss function and optimizer
-    tf_loss, tf_video, tf_caption, tf_caption_mask, _ = model.build_train_model(dictionary[BOS_tag])
+    tf_loss, tf_video, tf_caption, tf_caption_mask, _ = model.build_train_model(dictionary)
     tf_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(tf_loss)
 
     init = tf.global_variables_initializer()
@@ -270,7 +273,7 @@ def run_train():
         step = 0
 
         t = time.time()
-        while step < 3:
+        while step < N_iter:
             batch_x, batch_y = train.next_batch(batch_size=batch_size)
             y = np.full((batch_size, train.maxseqlen), dictionary[EOS_tag])
             y_mask = np.zeros(y.shape)
@@ -285,8 +288,8 @@ def run_train():
                 tf_caption_mask: y_mask
                 })
 
-            if True:
-#            if step % display_step == 0:
+#            if True:
+            if step % display_step == 0:
                 used_time = time.time() - t
                 t = time.time()
                 loss = sess.run(tf_loss, feed_dict={
@@ -294,8 +297,8 @@ def run_train():
                     tf_caption: y,
                     tf_caption_mask: y_mask
                     })
-                print(str(step) + ' step: loss = ', str(loss) + 
-                        ' time = ' + str(used_time) + ' secs')
+                print(str(step) + '/' + str(N_iter) + ' step: loss = ' +
+                        str(loss) + ' time = ' + str(used_time) + ' secs')
                 model.save_model(sess, model_file)
 
             step += 1
@@ -340,7 +343,7 @@ def run_test(testing_id_file, feature_path):
             N_caption_step = maxseqlen,
             batch_size = batch_size)
 
-    tf_video, tf_caption, _ = model.build_test_model(dictionary[BOS_tag])
+    tf_video, tf_caption, _ = model.build_test_model(dictionary)
 
     init = tf.global_variables_initializer()
 
@@ -360,16 +363,13 @@ def run_test(testing_id_file, feature_path):
             pred = sess.run(tf_caption, feed_dict={tf_video: [x]})
 
             for j, word in enumerate(pred):
-                if inv_dictionary[word] == EOS_tag:
+                if word >= model.vocab_size-3:
                     break
                 else:
                     if j > 0:
                         caption['caption'] += ' '
-                    
-                    if inv_dictionary[word] == UNK_tag:
-                        caption['caption'] += 'something'
-                    else:
-                        caption['caption'] += inv_dictionary[word]
+
+                    caption['caption'] += inv_dictionary[word]
 
             result.append(caption)
 
