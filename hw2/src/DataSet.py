@@ -1,5 +1,4 @@
 import numpy as np
-import random
 
 class DataSet(object):
 
@@ -21,6 +20,9 @@ class DataSet(object):
                 if len(sent) > self._maxseqlen:
                     self._maxseqlen = len(sent)
 
+        self._feat = np.array(self._feat)
+        self._label = np.array(self._label)
+        self._caption = np.array(self._caption)
         self._datalen = len(self._caption)
         self._feat_timestep = len(self._feat[0])
         self._feat_dim = len(self._feat[0][0])
@@ -38,7 +40,13 @@ class DataSet(object):
 
         for _ in range(batch_size):
 
-            while self._index_in_epoch >= self._datalen:
+            if self._index_in_epoch >= self._datalen:
+                random_idx = np.arange(0, self.datalen)
+                np.random.shuffle(random_idx)
+                
+                self._label = self._label[random_idx]
+                self._caption = self._caption[random_idx]
+                
                 self._index_in_epoch = 0
                 self._N_epoch += 1
 
@@ -47,7 +55,7 @@ class DataSet(object):
 
             self._index_in_epoch += 1
 
-        return x, y
+        return np.array(x), np.array(y)
 
 
     @property
