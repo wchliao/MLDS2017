@@ -33,9 +33,9 @@ model_file = './model/model.ckpt'
 
 ##### Constants #####
 
-UNK_tag = '<UNK>'
-BOS_tag = '<BOS>'
 EOS_tag = '<EOS>'
+BOS_tag = '<BOS>'
+UNK_tag = '<UNK>'
 
 #####################
 
@@ -47,7 +47,7 @@ display_step = 100
 N_hidden = 256
 N_epoch = 10
 learning_rate = 0.001
-maxseqlen = 20
+maxseqlen = 30
 
 ######################
 
@@ -72,8 +72,8 @@ def parse_args():
 
 
 class s2vtModel():
-    def __init__(self, dim, vocab_size, N_hidden, N_video_step, N_caption_step, batch_size):
-        self.dim = dim
+    def __init__(self, image_dim, vocab_size, N_hidden, N_video_step, N_caption_step, batch_size):
+        self.image_dim = image_dim
         self.vocab_size = vocab_size
         self.N_hidden = N_hidden
         self.N_video_step = N_video_step
@@ -90,7 +90,7 @@ class s2vtModel():
                 state_is_tuple=False)
 
         self.image_w = tf.Variable(
-            tf.random_uniform([dim, N_hidden], -0.1, 0.1),
+            tf.random_uniform([image_dim, N_hidden], -0.1, 0.1),
             name = 'image_w')
         self.image_b = tf.Variable(tf.zeros([N_hidden]),
             name = 'image_b')
@@ -107,14 +107,14 @@ class s2vtModel():
     def build_train_model(self, dictionary):
         # Inputs
         video = tf.placeholder(dtype=tf.float32, 
-                shape=[self.batch_size, self.N_video_step, self.dim])
+                shape=[self.batch_size, self.N_video_step, self.image_dim])
 
         caption = tf.placeholder(dtype=tf.int32,
                 shape=[self.batch_size, self.N_caption_step])
         caption_mask = tf.placeholder(dtype=tf.float32,
                 shape=[self.batch_size, self.N_caption_step])
 
-        video_flat = tf.reshape(video, [-1, self.dim])
+        video_flat = tf.reshape(video, [-1, self.image_dim])
         image_embed = tf.nn.xw_plus_b(video_flat, self.image_w, self.image_b)
         image_embed = tf.reshape(image_embed, 
                 [self.batch_size, self.N_video_step, self.N_hidden])
@@ -173,8 +173,8 @@ class s2vtModel():
     def build_test_model(self, dictionary):
         # Inputs
         video = tf.placeholder(dtype=tf.float32, 
-                shape=[1, self.N_video_step, self.dim])
-        video_flat = tf.reshape(video, [-1, self.dim])
+                shape=[1, self.N_video_step, self.image_dim])
+        video_flat = tf.reshape(video, [-1, self.image_dim])
         image_embed = tf.nn.xw_plus_b(video_flat, self.image_w, self.image_b)
         image_embed = tf.reshape(image_embed, [1, self.N_video_step, self.N_hidden])
 
@@ -183,8 +183,6 @@ class s2vtModel():
         state2 = tf.zeros([1, self.LSTM2.state_size])
         padding = tf.zeros([1, self.N_hidden])
 
-        valid_idx = np.append(range(self.vocab_size-3), dictionary[EOS_tag])
-        valid_idx = tf.constant(valid_idx)
         probs = []
         caption = []
 
@@ -214,8 +212,9 @@ class s2vtModel():
 
             logits = tf.nn.xw_plus_b(output2, self.word_w, self.word_b)
             logits = tf.reshape(logits, [-1])
+            logits = tf.gather(logits, np.arange(0, self.vocab_size-2))
             probs.append(logits)
-            best_choice = tf.argmax(tf.gather(logits, valid_idx), axis=0)
+            best_choice = tf.argmax(logits, axis=0)
             caption.append(best_choice)
 
             cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
@@ -253,7 +252,7 @@ def run_train():
 
     # Model
     model = s2vtModel(
-            dim = train.feat_dim,
+            image_dim = train.feat_dim,
             vocab_size = train.vocab_size,
             N_hidden = N_hidden,
             N_video_step = train.feat_timestep,
@@ -336,7 +335,7 @@ def run_test(testing_id_file, feature_path):
 
     # Model
     model = s2vtModel(
-            dim = feat_dim,
+            image_dim = feat_dim,
             vocab_size = vocab_size,
             N_hidden = N_hidden,
             N_video_step = feat_timestep,
@@ -363,7 +362,8 @@ def run_test(testing_id_file, feature_path):
             pred = sess.run(tf_caption, feed_dict={tf_video: [x]})
 
             for j, word in enumerate(pred):
-                if word >= model.vocab_size-3:
+                if inv_dictionary[word] == EOS_tag:
+                    caption['caption'] += EOS_tag
                     break
                 else:
                     if j > 0:
