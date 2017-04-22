@@ -363,7 +363,6 @@ def run_test(testing_id_file, feature_path):
 
             for j, word in enumerate(pred):
                 if inv_dictionary[word] == EOS_tag:
-                    caption['caption'] += EOS_tag
                     break
                 else:
                     if j > 0:
