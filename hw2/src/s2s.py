@@ -296,6 +296,8 @@ def run_train():
 
             step += 1
 
+        model.save_model(sess, model_file)
+
     return
 
 
