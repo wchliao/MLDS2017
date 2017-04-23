@@ -159,7 +159,7 @@ class s2sModel():
 
             probs.append(logits)
 
-            cur_loss = tf.reduce_sum(cross_entropy)
+            cur_loss = tf.reduce_sum(cross_entropy) / self.batch_size
             loss += cur_loss
 
         loss = loss / tf.reduce_sum(caption_mask)

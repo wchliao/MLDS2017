@@ -372,7 +372,7 @@ def run_test(testing_id_file, feature_path):
             N_hidden = N_hidden,
             N_video_step = feat_timestep,
             N_caption_step = maxseqlen,
-            batch_size = batch_size)
+            batch_size = 1)
 
     tf_video, tf_caption, _ = model.build_test_model(dictionary)
 
