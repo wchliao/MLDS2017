@@ -79,6 +79,7 @@ class s2vtModel():
         self.N_video_step = N_video_step
         self.N_caption_step = N_caption_step
         self.batch_size = batch_size
+        self.beam_size = 3
 
         self.word_embeddings = tf.Variable(
             tf.random_uniform([vocab_size, N_hidden], -0.1, 0.1), 
@@ -198,6 +199,28 @@ class s2vtModel():
                     output2, state2 = self.LSTM2(tf.concat([padding, output1], 1), state2)
 
         # Decoding stage: Generate captions
+        
+        log_beam_probs, beam_symbols, beam_path  = [], [], []
+
+        def beam_search(prev, i):
+            probs = tf.log(tf.nn.softmax(prev))
+            real_vs = self.vocab_size-2
+            if i > 1:
+
+                probs = tf.reshape(probs + log_beam_probs[-1], 
+                                   [-1, self.beam_size * real_vs])
+
+            best_probs, indices = tf.nn.top_k(probs, self.beam_size)
+            indices = tf.stop_gradient(tf.squeeze(tf.reshape(indices, [-1, 1])))
+            best_probs = tf.stop_gradient(tf.reshape(best_probs, [-1, 1]))
+
+            symbols = indices % real_vs # Which word in vocabulary.
+            beam_parent = indices // real_vs # Which hypothesis it came from.
+
+            beam_symbols.append(symbols)
+            beam_path.append(beam_parent)
+            log_beam_probs.append(best_probs)
+
         for i in range(self.N_caption_step):
             if i == 0:
                 cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
@@ -213,14 +236,23 @@ class s2vtModel():
             logits = tf.nn.xw_plus_b(output2, self.word_w, self.word_b)
             logits = tf.reshape(logits, [-1])
             logits = tf.gather(logits, np.arange(0, self.vocab_size-2))
-            probs.append(logits)
-            best_choice = tf.argmax(logits, axis=0)
-            caption.append(best_choice)
+            beam_search(logits, i + 1)
+            #probs.append(logits)
+            #best_choice = tf.argmax(logits, axis=0)
+            #caption.append(best_choice)
 
             cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
-                    best_choice)
+                    tf.gather(beam_symbols[-1], 0))
             cur_embed = tf.expand_dims(cur_embed, 0)
-
+       
+        i_old = tf.argmax(log_beam_probs[-1], axis=0)
+        idx = i_old
+        caption = []
+        for i in reversed(range(30)):
+            caption.append(tf.gather(beam_symbols[i], idx))
+            idx = tf.gather(beam_path[i], idx)
+        caption = [tf.squeeze(x) for x in reversed(caption)]
+           
         return video, caption, probs
 
 
@@ -360,7 +392,7 @@ def run_test(testing_id_file, feature_path):
             caption['caption'] = ''
             caption['id'] = ID[i]
             pred = sess.run(tf_caption, feed_dict={tf_video: [x]})
-
+            
             for j, word in enumerate(pred):
                 if inv_dictionary[word] == EOS_tag:
                     break
