@@ -139,7 +139,7 @@ class AttentionModel():
 
     def build_train_model(self, dictionary):
         # Inputs
-        step = tf.placeholder(dtype=tf.float32)
+        epoch = tf.placeholder(dtype=tf.float32)
         video = tf.placeholder(dtype=tf.float32, 
                 shape=[self.batch_size, self.N_video_step, self.image_dim])
 
@@ -173,21 +173,16 @@ class AttentionModel():
         image_states = tf.stack(image_states, axis=1)
 
         # Decoding stage: Generate captions
-        epsilon = 1/(1+tf.exp(step)) 
+        epsilon = N_epoch/(N_epoch+tf.exp(epoch/N_epoch))
         for i in range(self.N_caption_step):
             if i == 0:
                 cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
                         np.full(self.batch_size, dictionary[BOS_tag], dtype=np.int32))
             else:
-
-                def best_choice():
-                    logits = tf.nn.xw_plus_b(output, self.word_w, self.word_b)
-                    return tf.argmax(logits, axis=1)
-
                 rand = tf.random_uniform([1])
                 rand = rand[0]
                 next_word = tf.cond(rand < epsilon, lambda: caption[:, i-1],
-                        lambda: tf.to_int32(best_choice()))
+                        lambda: tf.to_int32(tf.argmax(logits, axis=1)))
                 cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
                         next_word)
 
@@ -212,7 +207,7 @@ class AttentionModel():
 
         loss = loss / tf.reduce_sum(caption_mask)
 
-        return loss, video, caption, caption_mask, probs, step
+        return loss, video, caption, caption_mask, probs, epoch
 
 
     def build_test_model(self, dictionary):
@@ -306,7 +301,7 @@ def run_train():
             batch_size = batch_size)
 
     # Loss function and optimizer
-    tf_loss, tf_video, tf_caption, tf_caption_mask, _, tf_step = model.build_train_model(dictionary)
+    tf_loss, tf_video, tf_caption, tf_caption_mask, _, tf_epoch = model.build_train_model(dictionary)
     tf_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(tf_loss)
 
     init = tf.global_variables_initializer()
@@ -328,7 +323,7 @@ def run_train():
                 y_mask[i, :len(caption)] = 1
 
             sess.run(tf_optimizer, feed_dict={
-                tf_step: step,
+                tf_epoch: train.N_epoch,
                 tf_video: batch_x,
                 tf_caption: y, 
                 tf_caption_mask: y_mask
@@ -339,7 +334,7 @@ def run_train():
                 used_time = time.time() - t
                 t = time.time()
                 loss = sess.run(tf_loss, feed_dict={
-                    tf_step: step,
+                    tf_epoch: train.N_epoch,
                     tf_video: batch_x,
                     tf_caption: y,
                     tf_caption_mask: y_mask
