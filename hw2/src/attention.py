@@ -42,7 +42,7 @@ UNK_tag = '<UNK>'
 
 ##### Parameters #####
 
-batch_size = 100
+batch_size = 50
 display_step = 100
 N_hidden = 256
 N_epoch = 10
@@ -413,7 +413,7 @@ def run_test(testing_id_file, feature_path):
 
 
 def WriteResult(data):
-    with open('result.json','w') as f:
+    with open('output.json','w') as f:
         json.dump(data, f, sort_keys=True, indent=4)
     return
 

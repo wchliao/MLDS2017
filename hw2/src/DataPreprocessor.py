@@ -37,8 +37,8 @@ def build_cnter(datafile):
             words = sent.split()
             cnter.update(words)
 
-    cnter.update(['<BOS>'])
     cnter.update(['<EOS>'])
+    cnter.update(['<BOS>'])
 
     return cnter
 
@@ -158,12 +158,13 @@ def DeNoise(cnter, freq_threshold=None, num_threshold=None):
 
     new_cnter = cnter.most_common(cut_threshold)
     new_cnter = Counter(dict(new_cnter))
-    new_cnter.update(['<UNK>'])
 
-    if '<BOS>' not in new_cnter:
-        new_cnter.update(['<BOS>'])
     if '<EOS>' not in new_cnter:
         new_cnter.update(['<EOS>'])
+    if '<BOS>' not in new_cnter:
+        new_cnter.update(['<BOS>'])
+    
+    new_cnter.update(['<UNK>'])
 
     return new_cnter
 
