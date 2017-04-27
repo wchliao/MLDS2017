@@ -345,7 +345,8 @@ def run_train():
 def run_test(testing_id_file, feature_path):
     # Inputs
     dictionary = DP.read_dict(dict_file)
-    inv_dictionary = list(dictionary)
+    inv_dictionary = {value: key for (key, value) in dictionary.items()}
+#    inv_dictionary = list(dictionary)
 
     ID = []
     with open(testing_id_file, 'r') as f:
