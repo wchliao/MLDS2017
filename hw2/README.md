@@ -3,7 +3,7 @@
 ## Usage
 
 ``` bash
-$ bash run.sh [testing id file] [testing feature path] [--train] [--test]
+$ python ./src/attention.py [testing id file] [testing feature path] [--train] [--test]
 ```
 
 * `[testing id file]` put "testing_id.csv" here
