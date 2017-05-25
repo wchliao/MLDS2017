@@ -84,11 +84,7 @@ def main():
 		z_n1 = np.random.uniform(-0.5, 0.5, [1, args.z_dim])
 		z_n2 = np.random.uniform(-10, 10, [args.n_images-1, args.z_dim])
 		z_noise = np.append(z_n1,z_n2,axis=0)
-		# z_noise = np.random.uniform(-1, 1, [args.n_images, args.z_dim])
-		# print z_noise.shape
 		caption = [ caption_vector[0:args.caption_vector_length] ] * args.n_images
-		# print np.array(caption).shape
-		# print z_noise[0:100]
 		[ gen_image ] = sess.run( [ outputs['generator'] ], 
 			feed_dict = {
 				input_tensors['t_real_caption'] : caption,
