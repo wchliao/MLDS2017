@@ -51,7 +51,7 @@ print('== Pretrained model ==')
 MODEL_DIR = os.path.join(DATA_DIR, 'Models')
 make_sure_path_exists(MODEL_DIR)
 pretrained_model_filename = 'latest_faces_model.ckpt.data-00000-of-00001'
-src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/9zwuzrhn1xl7cc/?dis=10014&fi=48158036' #'https://www.space.ntu.edu.tw/navigate/s/7F19A05FFC1B4D8C92D904D6F2311803QQY'
+src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/xfphk6hu7w9d2nd/?dis=10014&fi=48158923' #'https://www.space.ntu.edu.tw/webrelay/directdownload/au3i45hrl9mr2na/?dis=10014&fi=48158036'
 # src_url = 'https://bitbucket.org/paarth_neekhara/texttomimagemodel/raw/74a4bbaeee26fe31e148a54c4f495694680e2c31/' + pretrained_model_filename
 print('Downloading ' + src_url)
 urlretrieve(
@@ -60,7 +60,7 @@ urlretrieve(
     reporthook=dl_progress_hook,
 )
 pretrained_model_filename = 'latest_faces_model.ckpt.index'
-src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/au3i45hrl9mr2na/?dis=10014&fi=48158795' #'https://www.space.ntu.edu.tw/navigate/s/680731D7911A4DC89FA8BE4551592733QQY'
+src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/au3i45hrl9mr2na/?dis=10014&fi=48158795'
 # src_url = 'https://bitbucket.org/paarth_neekhara/texttomimagemodel/raw/74a4bbaeee26fe31e148a54c4f495694680e2c31/' + pretrained_model_filename
 print('Downloading ' + src_url)
 urlretrieve(
@@ -69,7 +69,7 @@ urlretrieve(
     reporthook=dl_progress_hook,
 )
 pretrained_model_filename = 'latest_faces_model.ckpt.meta'
-src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/au3i45hrl9mr2na/?dis=10014&fi=48158796' #'https://www.space.ntu.edu.tw/navigate/s/50EDF0BB7EE54F9C8ABD2958580EC74DQQY'
+src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/au3i45hrl9mr2na/?dis=10014&fi=48158796'
 # src_url = 'https://bitbucket.org/paarth_neekhara/texttomimagemodel/raw/74a4bbaeee26fe31e148a54c4f495694680e2c31/' + pretrained_model_filename
 print('Downloading ' + src_url)
 urlretrieve(
