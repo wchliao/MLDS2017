@@ -38,7 +38,7 @@ def main():
 	parser.add_argument('--data_dir', type=str, default="../samples/",
 					   help='Data Directory')
 
-	parser.add_argument('--model_path', type=str, default='Data/Models/small3_model_after_faces_epoch_415.ckpt',
+	parser.add_argument('--model_path', type=str, default='Data/Models/latest_faces_model.ckpt',
                        help='Trained Model Path')
 
 	parser.add_argument('--n_images', type=int, default=5,
