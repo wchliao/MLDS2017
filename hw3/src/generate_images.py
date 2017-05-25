@@ -11,6 +11,13 @@ import random
 import json
 import os
 
+def make_sure_path_exists(path):
+    try:
+        os.makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
 def main():
 	parser = argparse.ArgumentParser()
 
@@ -92,6 +99,8 @@ def main():
 		caption_images = [gen_image[i,:,:,:] for i in range(0, args.n_images)]
 		caption_image_dic[ cn ] = caption_images
 		print "Generated", cn,"captions."
+
+	make_sure_path_exists(join(args.data_dir, 'samples'))
 
 	for f in os.listdir( join(args.data_dir, 'samples')):
 		if os.path.isfile(f):
