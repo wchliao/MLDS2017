@@ -19,7 +19,7 @@ def main():
 	with open( args.caption_file ) as f:
 		for line in f:
 			l = line.split(',')
-			caption.append(l[1])
+			captions.append(l[1])
 			
 	captions = [cap for cap in captions if len(cap) > 0]
 	print captions
