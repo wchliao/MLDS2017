@@ -35,7 +35,7 @@ def main():
 	parser.add_argument('--caption_vector_length', type=int, default=2400,
 					   help='Caption Vector Length')
 	
-	parser.add_argument('--data_dir', type=str, default="../samples/",
+	parser.add_argument('--data_dir', type=str, default="./",
 					   help='Data Directory')
 
 	parser.add_argument('--model_path', type=str, default='Data/Models/latest_faces_model.ckpt',
@@ -93,15 +93,15 @@ def main():
 		caption_image_dic[ cn ] = caption_images
 		print "Generated", cn,"captions."
 
-	for f in os.listdir( join(args.data_dir, 'val_samples')):
+	for f in os.listdir( join(args.data_dir, 'samples')):
 		if os.path.isfile(f):
-			os.unlink(join(args.data_dir, 'val_samples/' + f))
+			os.unlink(join(args.data_dir, 'samples/' + f))
 
 	for cn in range(0, len(caption_vectors)):
 		caption_images = []
 		for i, im in enumerate( caption_image_dic[ cn ] ):
 			im_name = "sample{}_{}.jpg".format(cn, i)
-			scipy.misc.imsave( join(args.data_dir, 'val_samples/{}'.format(im_name)) , im)
+			scipy.misc.imsave( join(args.data_dir, 'samples/{}'.format(im_name)) , im)
 			# caption_images.append( im )
 			# caption_images.append( np.zeros((64, 5, 3)) )
 		# combined_image = np.concatenate( caption_images[0:-1], axis = 1 )
