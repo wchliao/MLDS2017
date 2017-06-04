@@ -8,8 +8,7 @@ from collections import Counter
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('datapaths', nargs=4, 
-            help='Data paths order: movie_conversation, movie_lines, twitter_en')
+    parser.add_argument('datafile', help='Open subtitles dataset')
     parser.add_argument('output', help='Output file name')
     parser.add_argument('dict_file', help='Dictionary file name')
 
@@ -38,34 +37,25 @@ def line2vec(line, dictionary):
     return vec
 
 
-def build_cnter(datapaths):
+def build_cnter(datafile):
     cnter = Counter()
 
-    with open(datapaths['movie_lines'], 'r', errors='ignore') as f:
-        for line in f.readlines():
-            sent = line2words(line)
-            cnter.update(sent[8:])
+    with open(datafile, 'r', errors='ignore') as f:
+        text = f.readlines()
+        for i in range(0, len(text), 2):
+            sent = line2words(text[i])
+            cnter.update(sent)
 
-        with open(datapaths['open_subtitles'], 'r', errors='ignore') as f:
-            text = f.readlines()
-            for i in range(0, len(text), 2):
-                sent = line2words(text[i])
-                cnter.update(sent)
-
-        with open(datapaths['twitter'], 'r', errors='ignore') as f:
-            for line in f.readlines():
-                sent = line2words(line)
-                cnter.update(sent)
-
-    cnter.update('<EOS>')
-    cnter.update('<BOS>')
+    cnter.update(['<EOS>'])
+    cnter.update(['<PAD>'])
+    cnter.update(['<BOS>'])
         
     return cnter
 
 
-def build_dictionary(datapaths=None, cnter=None):
+def build_dictionary(datafile=None, cnter=None):
     if cnter is None:
-        cnter = build_cnter(datapaths)
+        cnter = build_cnter(datafile)
 
     dictionary = {}
     for idx, wordpair in enumerate(cnter.most_common()):
@@ -74,47 +64,27 @@ def build_dictionary(datapaths=None, cnter=None):
     return dictionary, cnter
 
 
-def ReadRawData(datapaths):
+def ReadRawData(datafile):
     output = []
 
-    with open(datapaths['movie_lines'], 'r', errors='ignore') as f:
-        lines = {}
-        for line in f.readlines():
-            sent = line2words(line)
-            lines[sent[0]] = sent[8:]
+    with open(datafile, 'r', errors='ignore') as f:
+        text = f.readlines()
+        for i in range(0, len(text), 2):
+            conversations = []
+            sent = line2words(text[i])
+            conversations.append(sent)
+            sent = line2words(text[i+1])
+            conversations.append(sent)
 
-        with open(datapaths['movie_conversations'], 'r', errors='ignore') as f:
-            for line in f.readlines():
-                start_idx = line.index('[')
-                sents = eval(line[start_idx:])
-                conversations = [lines[sent.lower()] for sent in sents]
-                for i in range(len(conversations)-1):
-                    output.append([conversations[i], conversations[i+1]])
-
-        with open(datapaths['open_subtitles'], 'r', errors='ignore') as f:
-            text = f.readlines()
-            for i in range(0, len(text), 2):
-                conversations = []
-                sent = line2words(text[i])
-                conversations.append(sent)
-                sent = line2words(text[i+1])
-                conversations.append(sent)
+            if not conversations[0] or not conversations[1]:
+                continue
+            else:
                 output.append(conversations)
 
-        with open(datapaths['twitter'], 'r', errors='ignore') as f:
-            text = f.readlines()
-            for i in range(0, len(text), 2):
-                conversations = []
-                sent = line2words(text[i])
-                conversations.append(sent)
-                sent = line2words(text[i+1])
-                conversations.append(sent)
-                output.append(conversations)
-        
-        return output
+    return output
 
 
-def DeNoise(cnter, freq_threshold=None, num_threshold=None):
+def DeNoise(cnter, freq_threshold=None, num_threshold=None, keep_percent=0.97):
     cut_threshold = 0
     if freq_threshold is not None:
         sort_cnter = cnter.most_common()
@@ -129,18 +99,33 @@ def DeNoise(cnter, freq_threshold=None, num_threshold=None):
             if wordpair[1] < freq_threshold:
                 cut_threshold = idx
                 break
+    elif keep_percent is not None:
+        sort_cnter = cnter.most_common()
+        all_count = 0
+        remain_count = 0
+
+        for (word, count) in sort_cnter:
+            all_count += count
+
+        for idx, (word, count) in enumerate(sort_cnter):
+            remain_count += count
+            if remain_count / all_count > keep_percent:
+                cut_threshold = idx
+                break
     else:
         return cnter
 
     new_cnter = cnter.most_common(cut_threshold)
     new_cnter = Counter(dict(new_cnter))
 
-    if '<UNK>' not in new_cnter:
-        new_cnter.update(['<UNK>'])
     if '<EOS>' not in new_cnter:
         new_cnter.update(['<EOS>'])
+    if '<PAD>' not in new_cnter:
+        new_cnter.update(['<PAD>'])
     if '<BOS>' not in new_cnter:
         new_cnter.update(['<BOS>'])
+    if '<UNK>' not in new_cnter:
+        new_cnter.update(['<UNK>'])
 
     return new_cnter
 
@@ -207,18 +192,13 @@ def ReadData(filename):
 
 if __name__ == '__main__':
     args = parse_args()
-    datapaths = {}
-    datapaths['movie_conversations'] = args.datapaths[0]
-    datapaths['movie_lines'] = args.datapaths[1]
-    datapaths['open_subtitles'] = args.datapaths[2]
-    datapaths['twitter'] = args.datapaths[3]
 
-    dictionary, cnter = build_dictionary(datapaths)
-    cnter = DeNoise(cnter, num_threshold=10000)
+    dictionary, cnter = build_dictionary(args.datafile)
+    cnter = DeNoise(cnter, freq_threshold=50)
     dictionary, _ = build_dictionary(cnter=cnter)
     WriteDict(cnter, args.dict_file)
     
-    data = ReadRawData(datapaths)
+    data = ReadRawData(args.datafile)
     data = str2int(data, dictionary)
     WriteData(data, args.output)
 
