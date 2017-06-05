@@ -2,26 +2,30 @@ import numpy as np
 import DataPreprocessor
 
 
-class DataSet(object):
+class TrainData(object):
 
-    def __init__(self, datafile, dict_file):
+    def __init__(self, datafile, dictfile, maxseqlen=30):
 
         self._data = DataPreprocessor.ReadData(datafile)
-        self._dict = DataPreprocessor.ReadDict(dict_file)
+        self._dict = DataPreprocessor.ReadDict(dictfile)
 
         self._datasize = len(self._data)
+        self._dictsize = len(self._dict)
+        self._maxseqlen = maxseqlen
+
         self._index_in_epoch = 0
-        self._N_epoch = 0
+        self._epoch = 0
 
         return
 
 
     def next_batch(self, batch_size=1):
         
-        x = []
-        y = []
+        x = np.full((batch_size, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
+        y = np.full((batch_size, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
+        y[:,0] = self._dict['<BOS>']
 
-        for _ in range(batch_size):
+        for i in range(batch_size):
 
             if self._index_in_epoch >= self._datasize:
                 random_idx = np.arange(0, self._datasize)
@@ -30,10 +34,21 @@ class DataSet(object):
                 self._data = self._data[random_idx]
                 
                 self._index_in_epoch = 0
-                self._N_epoch += 1
+                self._epoch += 1
 
-            x.append(self._data[self._index_in_epoch][0])
-            y.append(self._data[self._index_in_epoch][1])
+            x_sent = self._data[self._index_in_epoch][0]
+            y_sent = self._data[self._index_in_epoch][1]
+
+            if len(x_sent) < self._maxseqlen:
+                x[i,:len(x_sent)] = x_sent
+            else:
+                x[i,:] = x_sent[:self._maxseqlen]
+
+            if len(y_sent) < self._maxseqlen - 1:
+                y[i,1:len(y_sent)+1] = y_sent
+                y[i,len(y_sent)+1] = self._dict['<EOS>']
+            else:
+                y[i,1:] = y_sent[:self._maxseqlen-1]
 
             self._index_in_epoch += 1
 
@@ -49,10 +64,84 @@ class DataSet(object):
         return self._datasize
 
     @property
+    def dictsize(self):
+        return self._dictsize
+
+    @property
+    def maxseqlen(self):
+        return self._maxseqlen
+
+    @property
     def index_in_epoch(self):
         return self._index_in_epoch
 
     @property
-    def N_epoch(self):
-        return self._N_epoch
+    def epoch(self):
+        return self._epoch
+
+
+
+
+class TestData(object):
+
+    def __init__(self, datafile, dictfile, maxseqlen=30):
+
+
+        self._data = []
+        self._dict = DataPreprocessor.ReadDict(dictfile)
+
+        with open(datafile, 'r') as f:
+            for line in f.readlines():
+                self._data.append(DataPreprocessor.line2vec(line, self._dict))
+        
+        self._datasize = len(self._data)
+        self._dictsize = len(self._dict)
+        self._maxseqlen = maxseqlen
+
+        self._index = 0
+
+        return
+
+
+    def next_batch(self):
+        
+        x = np.full((1, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
+
+        if self._index >= self._datasize:
+            self._index = 0
+
+        x_sent = self._data[self._index]
+
+        if len(x_sent) < self._maxseqlen:
+            x[0,:len(x_sent)] = x_sent
+        else:
+            x[0,:] = x_sent[:self._maxseqlen]
+
+        self._index += 1
+
+        y = np.full((1, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
+        y[:,0] = self._dict['<BOS>']
+
+        return x, y
+
+
+    @property
+    def dict(self):
+        return self._dict
+
+    @property
+    def datasize(self):
+        return self._datasize
+
+    @property
+    def dictsize(self):
+        return self._dictsize
+
+    @property
+    def maxseqlen(self):
+        return self._maxseqlen
+
+    @property
+    def index(self):
+        return self._index
 
