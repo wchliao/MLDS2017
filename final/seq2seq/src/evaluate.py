@@ -125,6 +125,18 @@ def evaluate(cand_file, ref_file):
 
     return score/len(cand)
 
+def evaluate_list(cand, ref):
+  
+    score = 0
+    for i in range(len(cand)):
+        tmp_score = 0
+        cand_caption = cand[i]['caption']
+        for ref_caption in ref[i]['caption']:
+            tmp_score += BLEU(cand_caption, ref_caption)
+        score += tmp_score/len(ref[i]['caption'])
+
+    return score/len(cand)
+
 if __name__ == '__main__':
     cand_file = sys.argv[1]
     ref_file = sys.argv[2]

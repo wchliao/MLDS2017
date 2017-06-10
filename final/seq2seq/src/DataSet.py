@@ -2,7 +2,7 @@ import numpy as np
 
 class DataSet(object):
 
-    def __init__(self, datapath, captions, vocab_size, EOS_tag):
+    def __init__(self, datapath, captions, vocab_size, EOS_tag, randomized=True):
 
         self._feat = []
         self._label = []

@@ -17,24 +17,43 @@ from keras.callbacks import EarlyStopping, Callback
 from keras.datasets import mnist
 import time
 
+from collections import namedtuple
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.05
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1)
+config = tf.ConfigProto(gpu_options=gpu_options,
+               device_count = {'GPU': 1})
 set_session(tf.Session(config=config))
 
 class LossHistory(Callback):
     def on_train_begin(self, logs={}):
         self.accs = []
         self.val_accs = []
+        self.ce = []
+        self.val_ce = []
 
     def on_epoch_end(self, batch, logs={}):
         self.accs.append(logs.get('acc'))
         self.val_accs.append(logs.get('val_acc'))
+        self.ce.append(logs.get('loss'))
+        self.val_ce.append(logs.get('val_loss'))
+
+class BatchLossHistory(Callback):
+    def on_train_begin(self, logs={}):
+        self.accs = []
+        self.val_accs = []
+        self.ce = []
+        self.val_ce = []
+
+    def on_batch_end(self, batch, logs={}):
+        self.accs.append(logs.get('acc'))
+        self.val_accs.append(logs.get('val_acc'))
+        self.ce.append(logs.get('loss'))
+        self.val_ce.append(logs.get('val_loss'))
 
 class AlexnetCNN(object):
     def __init__(self):
@@ -55,6 +74,8 @@ class AlexnetCNN(object):
         self._shuffle = False
 
         self.history = LossHistory()
+        self.batch_history = BatchLossHistory()
+
 
     def setFormat(self, img_rows, img_cols, img_color):
         self.img_color, self.img_rows, self.img_cols = img_color, img_rows, img_cols
@@ -124,12 +145,39 @@ class AlexnetCNN(object):
                         batch_size = batch_size, 
                         nb_epoch = self._epochs,
                         validation_data = (X_val, y_val),
-                        callbacks=[self.history])
+                        shuffle = self._shuffle,
+                        callbacks=[self.history, self.batch_history])
+
+    def fit_dynamic(self, X_train, y_train, X_val, y_val, increase=True):
+        seq = [64, 128, 256, 512, 1024]
+        if not increase:
+            seq = reversed(seq)
+        results = []
+        for batch_size in seq:
+            self.model.fit( X_train, y_train, 
+                            batch_size = batch_size, 
+                            nb_epoch = 4,
+                            validation_data = (X_val, y_val),
+                            shuffle = self._shuffle,
+                            callbacks=[self.history, self.batch_history])
+            results.append(self.history)
+        His = namedtuple('History', ['ce', 'val_ce', 'acc', 'val_acc'])
+        self.dynamic_results = His([],[],[],[])
+        for r in results:
+            self.dynamic_results.ce.append(r.ce)
+            self.dynamic_results.val_ce.append(r.val_ce)
+            self.dynamic_results.acc.append(r.accs)
+            self.dynamic_results.val_acc.append(r.val_accs)
 
     def reset(self):
         self.model.set_weights(self._weights)
         self.history = LossHistory()
 
+    def save_weights(self, name):
+        self.model.save_weights(name)
+
+    def load_weights(self, name):
+        self.model.load_weights(name)
 
 
 if __name__ == "__main__":
