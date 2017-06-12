@@ -9,10 +9,12 @@ You can also check `run.sh` for the example of the usage.
 ### Usage
 
 ```bash
-$ python DataPreprocessor.py [datafile] [outputfile] [dictfile]
+$ python DataPreprocessor.py [movie_conversations.txt] [movie_lines.txt] [open_subtitles.txt] [outputfile] [dictfile]
 ```
 
-* `[datafile]`: the path of `open_subtitles.txt`
+* `[movie_conversations.txt]`: the path of `movie_conversations.txt`
+* `[movie_lines.txt]`: the path of `movie_lines.txt`
+* `[open_subtitles.txt]`: the path of `open_subtitles.txt`
 * `[outputfile]`: the path of the output file you want to create
 * `[dictfile]`: the path of the dictionary you want to create
 
