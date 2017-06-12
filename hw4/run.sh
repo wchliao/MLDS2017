@@ -8,6 +8,6 @@ dictionary=data/dictionary.txt
 input=question.txt
 output=result.txt
 
-#python DataPreprocessor.py ${p3} ${processed_data} ${dictionary}
+#python DataPreprocessor.py ${p1} ${p2} ${p3} ${processed_data} ${dictionary}
 python seq2seq.py --train -t ${processed_data} -d ${dictionary}
 #python seq2seq.py --test -q ${input} -o ${output} -d ${dictionary}

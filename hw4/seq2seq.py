@@ -5,7 +5,6 @@ import tensorflow as tf
 from DataSet import TrainData
 from DataSet import TestData
 from model import seq2seqModel
-import DataPreprocessor
 
 
 ##### Global Constants #####
@@ -18,11 +17,14 @@ model_file = './model/model.ckpt'
 ##### Parameters #####
 
 batch_size = 256
-maxseqlen = 30
-hidden_dim = 256
-learning_rate = 0.5
-max_epoch = 20
-display_step = 1000
+maxseqlen = 22
+embed_size = 256
+num_layers = 4
+init_learning_rate = 0.5
+learning_rate_decay = 0.9
+min_learning_rate = 0.0001
+max_epoch = 10
+display_step = 10
 
 ######################
 
@@ -47,6 +49,18 @@ def parse_args():
     return parser.parse_args()
 
 
+def vec2line(mapped_sent, dictionary):
+    sent = ''
+    for i, word in enumerate(mapped_sent):
+        if dictionary[word] == '<EOS>':
+            break
+        if i > 0:
+            sent += ' '
+        sent += dictionary[word]
+
+    return sent
+
+
 def train(datafile, dictfile):
     data = TrainData(datafile, dictfile, maxseqlen = maxseqlen)
 
@@ -54,13 +68,13 @@ def train(datafile, dictfile):
             batch_size = batch_size,
             vocab_size = data.dictsize,
             maxseqlen = maxseqlen,
-            hidden_dim = hidden_dim,
+            embed_size = embed_size,
+            num_layers = num_layers
     )
-    inputs, loss = model.build_train_model()
-
-    optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss['nce_loss'])
+    inputs, loss, optimize = model.build_train_model()
 
     init = tf.global_variables_initializer()
+    learning_rate = init_learning_rate
 
 #    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     with tf.Session() as sess:
@@ -71,79 +85,75 @@ def train(datafile, dictfile):
         start_time = time.time()
 
         while data.epoch < max_epoch:
-            x, y = data.next_batch(batch_size = batch_size)
+            x, y, y_seqlen = data.next_batch(batch_size = batch_size)
 
-            sess.run(optimizer, feed_dict={
+            sess.run(optimize, feed_dict={
                 inputs['encoder_inputs']: x,
-                inputs['decoder_inputs']: y
+                inputs['decoder_inputs']: y,
+                inputs['decoder_length']: y_seqlen,
+                inputs['learning_rate']: learning_rate
             })
 
             if step % display_step == 0:
-                epoch = data.epoch
-                model.save_model(sess, model_file)
-                used_time = time.time() - start_time
-
-                cur_loss = sess.run(loss['sigmoid_loss'], feed_dict={
+                cur_loss = sess.run(loss['softmax_loss'], feed_dict={
                     inputs['encoder_inputs']: x,
-                    inputs['decoder_inputs']: y
+                    inputs['decoder_inputs']: y,
+                    inputs['decoder_length']: y_seqlen
                 })
-
-                print(str(step) + '/' + str(max_epoch * data.datasize // batch_size) + ' steps: ' +
-                        'loss = ' + str(np.mean(cur_loss)) + ' ' + 
-                        'time = ' + str(used_time) + ' secs'
+                
+                model.save_model(sess, model_file)
+                
+                used_time = time.time() - start_time
+                
+                print('{} / {} steps: softmax loss = {} time = {} secs'.format(
+                    step, max_epoch * data.datasize // batch_size, cur_loss, used_time)
                 )
+
+                learning_rate = init_learning_rate * pow(learning_rate_decay, data.epoch)
+                if learning_rate < min_learning_rate:
+                    learning_rate = min_learning_rate
 
                 start_time = time.time()
             
             step += 1
         
-        model.save_model(sess, model_file)
-
     return
 
 
-def test(inputfile, dictfile):
-    data = TestData(inputfile, dictfile, maxseqlen = maxseqlen)
+def test(questionfile, dictfile):
+    data = TestData(questionfile, dictfile, maxseqlen = maxseqlen)
     inv_dictionary = {value: key for (key, value) in data.dict.items()}
 
     model = seq2seqModel(
-            batch_size = batch_size,
+            batch_size = 1,
             vocab_size = data.dictsize,
             maxseqlen = maxseqlen,
-            hidden_dim = hidden_dim,
+            embed_size = embed_size,
+            num_layers = num_layers
     )
-    inputs, output = model.build_test_model()
+    inputs, caption = model.build_test_model()
 
     init = tf.global_variables_initializer()
-    
-    results = []
+
+    sents = []
 
 #    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     with tf.Session() as sess:
         sess.run(init)
         model.restore_model(sess, model_file)
 
-        while data.index < data.datasize:
+        for _ in range(data.datasize):
             x, y = data.next_batch()
 
-            mapped_output = sess.run(output, feed_dict={
+            mapped_sent = sess.run(caption, feed_dict={
                 inputs['encoder_inputs']: x,
                 inputs['decoder_inputs']: y
             })
 
-            caption = ''
+            sent = vec2line(mapped_sent, inv_dictionary)
+            sents.append(sent)
 
-            for i, word in enumerate(mapped_output):
-                if inv_dictionary[word] == data.dict['<EOS>']:
-                    break
-                else:
-                    if i > 0:
-                        caption += ' '
-                    caption += inv_dictionary[word]
-
-            results.append(caption)
-
-    return results
+    return sents
 
 
 def WriteResults(results, outputfile):

@@ -4,7 +4,7 @@ import DataPreprocessor
 
 class TrainData(object):
 
-    def __init__(self, datafile, dictfile, maxseqlen=30):
+    def __init__(self, datafile, dictfile, maxseqlen):
 
         self._data = DataPreprocessor.ReadData(datafile)
         self._dict = DataPreprocessor.ReadDict(dictfile)
@@ -23,36 +23,38 @@ class TrainData(object):
         
         x = np.full((batch_size, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
         y = np.full((batch_size, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
+        y_seqlen = []
         y[:,0] = self._dict['<BOS>']
 
         for i in range(batch_size):
 
             if self._index_in_epoch >= self._datasize:
-                random_idx = np.arange(0, self._datasize)
-                np.random.shuffle(random_idx)
-                
-                self._data = self._data[random_idx]
-                
-                self._index_in_epoch = 0
-                self._epoch += 1
+                self.shuffle()
 
             x_sent = self._data[self._index_in_epoch][0]
             y_sent = self._data[self._index_in_epoch][1]
 
-            if len(x_sent) < self._maxseqlen:
-                x[i,:len(x_sent)] = x_sent
-            else:
-                x[i,:] = x_sent[:self._maxseqlen]
+            x[i,:len(x_sent)] = x_sent
 
-            if len(y_sent) < self._maxseqlen - 1:
-                y[i,1:len(y_sent)+1] = y_sent
-                y[i,len(y_sent)+1] = self._dict['<EOS>']
-            else:
-                y[i,1:] = y_sent[:self._maxseqlen-1]
+            y[i,1:len(y_sent)+1] = y_sent
+            y[i,len(y_sent)+1] = self._dict['<EOS>']
+
+            y_seqlen.append(len(y_sent)+1)
 
             self._index_in_epoch += 1
 
-        return x, y
+        return x, y, y_seqlen
+
+
+    def shuffle(self):
+        random_idx = np.arange(0, self._datasize)
+        np.random.shuffle(random_idx)
+
+        self._data = self._data[random_idx]
+
+        self._index_in_epoch = 0
+        self._epoch += 1
+        return
 
 
     @property
@@ -72,10 +74,6 @@ class TrainData(object):
         return self._maxseqlen
 
     @property
-    def index_in_epoch(self):
-        return self._index_in_epoch
-
-    @property
     def epoch(self):
         return self._epoch
 
@@ -84,7 +82,7 @@ class TrainData(object):
 
 class TestData(object):
 
-    def __init__(self, datafile, dictfile, maxseqlen=30):
+    def __init__(self, datafile, dictfile, maxseqlen):
 
 
         self._data = []
@@ -108,21 +106,22 @@ class TestData(object):
         x = np.full((1, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
 
         if self._index >= self._datasize:
-            self._index = 0
+            self.shuffle()
 
         x_sent = self._data[self._index]
-
-        if len(x_sent) < self._maxseqlen:
-            x[0,:len(x_sent)] = x_sent
-        else:
-            x[0,:] = x_sent[:self._maxseqlen]
+        x[0,:len(x_sent)] = x_sent
 
         self._index += 1
-
+        
         y = np.full((1, self._maxseqlen), self._dict['<PAD>'], dtype=np.int32)
         y[:,0] = self._dict['<BOS>']
-
+        
         return x, y
+
+
+    def shuffle(self):
+        self._index = 0
+        return
 
 
     @property
@@ -141,7 +140,4 @@ class TestData(object):
     def maxseqlen(self):
         return self._maxseqlen
 
-    @property
-    def index(self):
-        return self._index
 
