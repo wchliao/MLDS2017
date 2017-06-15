@@ -7,7 +7,7 @@ def params_setup(cmdline=None):
   # path ctrl
   parser.add_argument('--model_name', type=str, default='open_subtitles_best', help='model name, affects data, model, result save path')
   parser.add_argument('--scope_name', type=str, help='separate namespace, for multi-models working together')
-  parser.add_argument('--work_root', type=str, default='../data/works/', help='root dir for data, model, result save path')
+  parser.add_argument('--work_root', type=str, default='../data/works', help='root dir for data, model, result save path')
   parser.add_argument('--input_name', type=str, default='../sample_input.txt', help='input file name')
   parser.add_argument('--output_name', type=str, default='../sample_output_BEST.txt', help='output file name')
 
