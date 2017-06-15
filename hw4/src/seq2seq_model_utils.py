@@ -8,8 +8,8 @@ from random import random
 from datetime import datetime
 from tensorflow.python.platform import gfile
 
-from lib import data_utils
-from lib import seq2seq_model
+from src.lib import data_utils
+from src.lib import seq2seq_model
 
 
 import heapq
