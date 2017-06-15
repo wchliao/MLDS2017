@@ -1,13 +1,21 @@
-p1=data/movie_conversations.txt
-p2=data/movie_lines.txt
-p3=data/open_subtitles.txt
-p4=data/chat.txt
+#!/bin/bash
+# bash run.sh S2S input.txt prediction.txt
 
-processed_data=data/conversations.npy
-dictionary=data/dictionary.txt
-input=question.txt
-output=result.txt
-
-#python DataPreprocessor.py ${p1} ${p2} ${p3} ${processed_data} ${dictionary}
-python seq2seq.py --train -t ${processed_data} -d ${dictionary}
-#python seq2seq.py --test -q ${input} -o ${output} -d ${dictionary}
+if [ $s1 == "S2S" ]
+then
+	echo "> RUNNING S2S"
+	python3 src/download_models_s2s.py
+	python3 src/main.py --mode test --model_name open_subtitles --vocab_size 80000 --size 128 --antilm 0.7 --n_bonus 0.1 --rev_model 0 --reinforce_learn 0 --input_name $s2 --output_name $s3
+elif [ $s1 == "RL" ]
+then
+	echo "> RUNNING RL"
+	python3 src/download_models_rl.py
+	python3 src/main.py --mode test --model_name open_subtitles_best --vocab_size 80000 --size 128 --antilm 0.7 --n_bonus 0.1 --rev_model 1 --reinforce_learn 1 --input_name $s2 --output_name $s3
+elif [ $s1 == "BEST" ]
+then
+	echo "> RUNNING BEST"
+	python3 src/download_models_s2s.py
+	python3 src/main.py --mode test --model_name open_subtitles_best --vocab_size 80000 --size 128 --antilm 0.7 --n_bonus 0.1 --rev_model 1 --reinforce_learn 1 --input_name $s2 --output_name $s3
+else
+	echo "> Please only use {S2S|RL|BEST} as first argument"
+fi
