@@ -3,8 +3,8 @@ import os
 import tensorflow as tf
 from datetime import datetime
 
-from lib import data_utils
-from lib.seq2seq_model_utils import create_model, get_predicted_sentence
+import data_utils
+from seq2seq_model_utils import create_model, get_predicted_sentence
 
 
 def predict(args, debug=False):
