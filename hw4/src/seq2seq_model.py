@@ -354,8 +354,8 @@ class Seq2SeqModel(object):
       
       #----[Reward]----------------------------------------
       # r1: Ease of answering
-      r1 = [self.logProb(session, args.buckets, resp_tokens, d) for d in self.dummy_dialogs]
-      r1 = -np.mean(r1) if r1 else 0
+      # r1 = [self.logProb(session, args.buckets, resp_tokens, d) for d in self.dummy_dialogs]
+      # r1 = -np.mean(r1) if r1 else 0
       
       # r2: Information Flow
       if len(enc_states) < 2:
@@ -370,8 +370,8 @@ class Seq2SeqModel(object):
 
       # Episode total reward
       # R = 0.25*r1 + 0.25*r2 + 0.5*r3
-      R = 0.5*r1 + 0.5*r2
-      ep_rewards.append(R)
+      # R = 0.5*r1 + 0.5*r2
+      ep_rewards.append(r2)
       #----------------------------------------------------
       if (resp_txt in self.dummy_dialogs) or (len(resp_tokens) <= 3) or (encoder_inputs in ep_encoder_inputs): 
         break # check if dialog ended
