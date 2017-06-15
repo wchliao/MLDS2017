@@ -37,6 +37,7 @@ else:
         os.path.join(MODEL_DIR, pretrained_model_filename),
         reporthook=dl_progress_hook,
     )
+print('')
 pretrained_model_filename = 'chat.in'
 src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/abck8lnnabyqcm/?dis=10014&fi=48620075'
 fname = MODEL_DIR + pretrained_model_filename
@@ -49,6 +50,7 @@ else:
         os.path.join(MODEL_DIR, pretrained_model_filename),
         reporthook=dl_progress_hook,
     )
+print('')
 
 print('=============== Downloading Models ===============')
 MODEL_DIR = 'data/works/open_subtitles_best_bidi/nn_models/'
@@ -65,6 +67,7 @@ else:
         os.path.join(MODEL_DIR, pretrained_model_filename),
         reporthook=dl_progress_hook,
     )
+print('')
 pretrained_model_filename = 'model.ckpt-589500.index'
 src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/2nmirwnn6hfzc9/?dis=10014&fi=48620063'
 fname = MODEL_DIR + pretrained_model_filename
@@ -77,6 +80,7 @@ else:
         os.path.join(MODEL_DIR, pretrained_model_filename),
         reporthook=dl_progress_hook,
     )
+print('')
 pretrained_model_filename = 'model.ckpt-589500.meta'
 src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/f3ax5snn65mzbs/?dis=10014&fi=48620064'
 fname = MODEL_DIR + pretrained_model_filename
@@ -89,3 +93,4 @@ else:
         os.path.join(MODEL_DIR, pretrained_model_filename),
         reporthook=dl_progress_hook,
     )
+print('')
