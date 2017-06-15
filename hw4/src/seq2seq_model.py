@@ -26,8 +26,8 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
-from src.lib import data_utils as data_utils
-from src.lib import seq2seq as tf_seq2seq
+from lib import data_utils as data_utils
+from lib import seq2seq as tf_seq2seq
 
 class Seq2SeqModel(object):
   """Sequence-to-sequence model with attention and for multiple buckets.

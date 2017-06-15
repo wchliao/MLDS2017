@@ -3,8 +3,8 @@ import sys
 
 import tensorflow as tf
 
-from src.lib import data_utils
-from src.lib.seq2seq_model_utils import create_model, get_predicted_sentence
+from lib import data_utils
+from lib.seq2seq_model_utils import create_model, get_predicted_sentence
 
 
 def chat(args):

@@ -4,10 +4,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import tensorflow as tf
 
-from src.lib.config import params_setup
-from src.lib.train import train
-from src.lib.predict import predict
-from src.lib.chat import chat
+from config import params_setup
+from train import train
+from predict import predict
+from chat import chat
 # from lib.mert import mert
 
 
