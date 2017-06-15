@@ -55,8 +55,8 @@ print('')
 print('=============== Downloading Models ===============')
 MODEL_DIR = 'data/works/open_subtitles_best_bidi/nn_models/'
 make_sure_path_exists(MODEL_DIR)
-pretrained_model_filename = 'model.ckpt-589500.data-00000-of-00001'
-src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/dlp1q7nn701ddd/?dis=10014&fi=48620062'
+pretrained_model_filename = 'model.ckpt-610000.data-00000-of-00001'
+src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/3igtzjnk2aa4cj/?dis=10014&fi=48633741'
 fname = MODEL_DIR + pretrained_model_filename
 if os.path.isfile(fname):
     print('Already exists: '+ pretrained_model_filename)
@@ -68,8 +68,8 @@ else:
         reporthook=dl_progress_hook,
     )
 print('')
-pretrained_model_filename = 'model.ckpt-589500.index'
-src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/2nmirwnn6hfzc9/?dis=10014&fi=48620063'
+pretrained_model_filename = 'model.ckpt-610000.index'
+src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/3igtzjnk2aa4cj/?dis=10014&fi=48633742'
 fname = MODEL_DIR + pretrained_model_filename
 if os.path.isfile(fname):
     print('Already exists: '+ pretrained_model_filename)
@@ -81,8 +81,8 @@ else:
         reporthook=dl_progress_hook,
     )
 print('')
-pretrained_model_filename = 'model.ckpt-589500.meta'
-src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/f3ax5snn65mzbs/?dis=10014&fi=48620064'
+pretrained_model_filename = 'model.ckpt-610000.meta'
+src_url = 'https://www.space.ntu.edu.tw/webrelay/directdownload/3igtzjnk2aa4cj/?dis=10014&fi=48633749'
 fname = MODEL_DIR + pretrained_model_filename
 if os.path.isfile(fname):
     print('Already exists: '+ pretrained_model_filename)

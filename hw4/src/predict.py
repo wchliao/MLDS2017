@@ -34,13 +34,15 @@ def predict(args, debug=False):
             predicted_sentence = get_predicted_sentence(args, sentence, vocab, rev_vocab, model, sess, debug=debug)
             if isinstance(predicted_sentence, list):
                 print("%s : (%s)" % (sentence, datetime.now()))
-                results_fh.write("%s : (%s)\n" % (sentence, datetime.now()))
+                # results_fh.write("%s : (%s)\n" % (sentence, datetime.now()))
                 for sent in predicted_sentence:
                     print("  (%s) -> %s" % (sent['prob'], sent['dec_inp']))
-                    results_fh.write("  (%f) -> %s\n" % (sent['prob'], sent['dec_inp']))
+                    # results_fh.write("  (%f) -> %s\n" % (sent['prob'], sent['dec_inp']))
+                    results_fh.write("%s\n" % (sent['dec_inp']))
             else:
                 print(sentence, ' -> ', predicted_sentence)
-                results_fh.write("%s -> %s\n" % (sentence, predicted_sentence))
+                # results_fh.write("%s -> %s\n" % (sentence, predicted_sentence))
+                results_fh.write("%s\n" % (predicted_sentence))
             # break
 
     results_fh.close()
