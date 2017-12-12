@@ -71,7 +71,7 @@ def parse_args():
     return parser.parse_args()
 
 
-class s2vtModel():
+class s2sModel():
     def __init__(self, image_dim, vocab_size, N_hidden, N_video_step, N_caption_step, batch_size):
         self.image_dim = image_dim
         self.vocab_size = vocab_size
@@ -79,7 +79,6 @@ class s2vtModel():
         self.N_video_step = N_video_step
         self.N_caption_step = N_caption_step
         self.batch_size = batch_size
-        self.beam_size = 3
 
         self.word_embeddings = tf.Variable(
             tf.random_uniform([vocab_size, N_hidden], -0.1, 0.1), 
@@ -121,8 +120,7 @@ class s2vtModel():
                 [self.batch_size, self.N_video_step, self.N_hidden])
 
         # RNN parameters
-        state1 = tf.zeros([self.batch_size, self.LSTM1.state_size])
-        state2 = tf.zeros([self.batch_size, self.LSTM2.state_size])
+        state = tf.zeros([self.batch_size, self.LSTM1.state_size])
         padding = tf.zeros([self.batch_size, self.N_hidden])
 
         probs = []
@@ -135,9 +133,7 @@ class s2vtModel():
                     scope.reuse_variables()
                 
                 with tf.variable_scope('LSTM1'):
-                    output1, state1 = self.LSTM1(image_embed[:,i,:], state1)
-                with tf.variable_scope('LSTM2'):
-                    output2, state2 = self.LSTM2(tf.concat([padding, output1], 1), state2)
+                    output, state = self.LSTM1(image_embed[:,i,:], state)
 
         # Decoding stage: Generate captions
         for i in range(self.N_caption_step):
@@ -149,13 +145,13 @@ class s2vtModel():
                         caption[:,i-1])
 
             with tf.variable_scope('LSTM_scope') as scope:
-                scope.reuse_variables()
-                with tf.variable_scope('LSTM1'):
-                    output1, state1 = self.LSTM1(padding, state1)
-                with tf.variable_scope('LSTM2'):
-                    output2, state2 = self.LSTM2(tf.concat([cur_embed, output1], 1), state2)
+                if i > 0:
+                    scope.reuse_variables()
 
-            logits = tf.nn.xw_plus_b(output2, self.word_w, self.word_b)
+                with tf.variable_scope('LSTM2'):
+                    output, state = self.LSTM2(cur_embed, state)
+
+            logits = tf.nn.xw_plus_b(output, self.word_w, self.word_b)
             cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
                                                     logits=logits,
                                                     labels=caption[:,i])
@@ -163,7 +159,7 @@ class s2vtModel():
 
             probs.append(logits)
 
-            cur_loss = tf.reduce_sum(cross_entropy)
+            cur_loss = tf.reduce_sum(cross_entropy) / self.batch_size
             loss += cur_loss
 
         loss = loss / tf.reduce_sum(caption_mask)
@@ -180,8 +176,7 @@ class s2vtModel():
         image_embed = tf.reshape(image_embed, [1, self.N_video_step, self.N_hidden])
 
         # RNN parameters
-        state1 = tf.zeros([1, self.LSTM1.state_size])
-        state2 = tf.zeros([1, self.LSTM2.state_size])
+        state = tf.zeros([1, self.LSTM1.state_size])
         padding = tf.zeros([1, self.N_hidden])
 
         probs = []
@@ -194,65 +189,32 @@ class s2vtModel():
                     scope.reuse_variables()
                 
                 with tf.variable_scope('LSTM1'):
-                    output1, state1 = self.LSTM1(image_embed[:,i,:], state1)
-                with tf.variable_scope('LSTM2'):
-                    output2, state2 = self.LSTM2(tf.concat([padding, output1], 1), state2)
+                    output, state = self.LSTM1(image_embed[:,i,:], state)
 
         # Decoding stage: Generate captions
-        
-        log_beam_probs, beam_symbols, beam_path  = [], [], []
-
-        def beam_search(prev, i):
-            probs = tf.log(tf.nn.softmax(prev))
-            real_vs = self.vocab_size-2
-            if i > 1:
-
-                probs = tf.reshape(probs + log_beam_probs[-1], 
-                                   [-1, self.beam_size * real_vs])
-
-            best_probs, indices = tf.nn.top_k(probs, self.beam_size)
-            indices = tf.stop_gradient(tf.squeeze(tf.reshape(indices, [-1, 1])))
-            best_probs = tf.stop_gradient(tf.reshape(best_probs, [-1, 1]))
-
-            symbols = indices % real_vs # Which word in vocabulary.
-            beam_parent = indices // real_vs # Which hypothesis it came from.
-
-            beam_symbols.append(symbols)
-            beam_path.append(beam_parent)
-            log_beam_probs.append(best_probs)
-
         for i in range(self.N_caption_step):
             if i == 0:
                 cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
                         [dictionary[BOS_tag]])
 
             with tf.variable_scope('LSTM_scope') as scope:
-                scope.reuse_variables()
-                with tf.variable_scope('LSTM1'):
-                    output1, state1 = self.LSTM1(padding, state1)
+                if i > 0:
+                    scope.reuse_variables()
+                
                 with tf.variable_scope('LSTM2'):
-                    output2, state2 = self.LSTM2(tf.concat([cur_embed, output1], 1), state2)
+                    output, state = self.LSTM2(cur_embed, state)
 
-            logits = tf.nn.xw_plus_b(output2, self.word_w, self.word_b)
+            logits = tf.nn.xw_plus_b(output, self.word_w, self.word_b)
             logits = tf.reshape(logits, [-1])
             logits = tf.gather(logits, np.arange(0, self.vocab_size-2))
-            beam_search(logits, i + 1)
-            #probs.append(logits)
-            #best_choice = tf.argmax(logits, axis=0)
-            #caption.append(best_choice)
+            probs.append(logits)
+            best_choice = tf.argmax(logits, axis=0)
+            caption.append(best_choice)
 
             cur_embed = tf.nn.embedding_lookup(self.word_embeddings,
-                    tf.gather(beam_symbols[-1], 0))
+                    best_choice)
             cur_embed = tf.expand_dims(cur_embed, 0)
-       
-        i_old = tf.argmax(log_beam_probs[-1], axis=0)
-        idx = i_old
-        caption = []
-        for i in reversed(range(30)):
-            caption.append(tf.gather(beam_symbols[i], idx))
-            idx = tf.gather(beam_path[i], idx)
-        caption = [tf.squeeze(x) for x in reversed(caption)]
-           
+
         return video, caption, probs
 
 
@@ -283,7 +245,7 @@ def run_train():
     print('Total training steps: %d' % N_iter)
 
     # Model
-    model = s2vtModel(
+    model = s2sModel(
             image_dim = train.feat_dim,
             vocab_size = train.vocab_size,
             N_hidden = N_hidden,
@@ -342,7 +304,7 @@ def run_train():
 def run_test(testing_id_file, feature_path):
     # Inputs
     dictionary = DP.read_dict(dict_file)
-    inv_dictionary = list(dictionary)
+    inv_dictionary = {value: key for (key, value) in dictionary.items()}
 
     ID = []
     with open(testing_id_file, 'r') as f:
@@ -368,13 +330,13 @@ def run_test(testing_id_file, feature_path):
     print('Total testing steps: %d' % N_input)
 
     # Model
-    model = s2vtModel(
+    model = s2sModel(
             image_dim = feat_dim,
             vocab_size = vocab_size,
             N_hidden = N_hidden,
             N_video_step = feat_timestep,
             N_caption_step = maxseqlen,
-            batch_size = 1)
+            batch_size = batch_size)
 
     tf_video, tf_caption, _ = model.build_test_model(dictionary)
 
@@ -394,7 +356,7 @@ def run_test(testing_id_file, feature_path):
             caption['caption'] = ''
             caption['id'] = ID[i]
             pred = sess.run(tf_caption, feed_dict={tf_video: [x]})
-            
+
             for j, word in enumerate(pred):
                 if inv_dictionary[word] == EOS_tag:
                     break
