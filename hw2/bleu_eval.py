@@ -1,7 +1,15 @@
+"""
+    Usage: python evaluate.py <candidate json file> <reference json file>
+"""
+
+
 import math
 import operator
 import sys
 from functools import reduce
+import json
+
+
 def count_ngram(candidate, references, n):
     clipped_count = 0
     count = 0
@@ -86,25 +94,40 @@ def geometric_mean(precisions):
     return (reduce(operator.mul, precisions)) ** (1.0 / len(precisions))
 
 
-def BLEU():
+def BLEU(s, t):
 
     score = 0.  
     count = 0
-    try:
-	    s = sys.argv[1]
-	    t =  sys.argv[2] 
 
-	    count += 1
-	    candidate = [s.strip()]
-	    references = [[t.strip()]] 
-	    precisions = []
-	    pr, bp = count_ngram(candidate, references, 1)
-	    precisions.append(pr)
-	    score = geometric_mean(precisions) * bp
-	    print("BLEU SCORE: " + str(score/count))
-    except:
-	    print("Usage: python bleu_eval.py <candidate_sentence> <reference_sentence>")
+    count += 1
+    candidate = [s.strip()]
+    references = [[t.strip()]] 
+    precisions = []
+    pr, bp = count_ngram(candidate, references, 1)
+    precisions.append(pr)
+    score = geometric_mean(precisions) * bp
+    return score/count 
 
-### Usage: python bleu_eval.py candidate_sentence reference_sentence
-### Ref : https://github.com/vikasnar/Bleu
-BLEU()
+
+def evaluate(cand_file, ref_file):
+    with open(cand_file, 'r') as f:
+        cand = json.load(f)
+    with open(ref_file, 'r') as f:
+        ref = json.load(f)
+
+    score = 0
+    for i in range(len(cand)):
+        tmp_score = 0
+        cand_caption = cand[i]['caption']
+        for ref_caption in ref[i]['caption']:
+            tmp_score += BLEU(cand_caption, ref_caption)
+        score += tmp_score/len(ref[i]['caption'])
+
+    return score/len(cand)
+
+if __name__ == '__main__':
+    cand_file = sys.argv[1]
+    ref_file = sys.argv[2]
+    score = evaluate(cand_file, ref_file)
+    print('avg_score:', score)
+
